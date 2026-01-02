@@ -42,13 +42,6 @@ datasets/
 *.h5
 *.hdf5
 
-# Imágenes generadas
-*.png
-*.jpg
-*.jpeg
-*.svg
-generated_*/
-
 # Logs y resultados
 logs/
 *.log

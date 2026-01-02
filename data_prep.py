@@ -55,17 +55,24 @@ def process_data(smiles_list):
     
     print(f"Vocabulario: {len(vocab)} tokens")
 
-    # 3. Tokenizar
+    # 3. Tokenizar con SOS y EOS
+    sos_idx = char_to_idx['[SOS]']
+    eos_idx = char_to_idx['[EOS]']
+    pad_idx = char_to_idx['[PAD]']
+    
     data_indices = []
     for s in tqdm(selfies_list, desc="Tokenizando"):
         tokens = list(sf.split_selfies(s))
         indices = [char_to_idx.get(t, char_to_idx['[UNK]']) for t in tokens]
         
-        # Padding
+        # Añadir SOS al inicio y EOS al final
+        indices = [sos_idx] + indices + [eos_idx]
+        
+        # Padding o truncado (MAX_LEN incluye SOS y EOS)
         if len(indices) < MAX_LEN:
-            indices += [char_to_idx['[PAD]']] * (MAX_LEN - len(indices))
+            indices += [pad_idx] * (MAX_LEN - len(indices))
         else:
-            indices = indices[:MAX_LEN]
+            indices = indices[:MAX_LEN-1] + [eos_idx]  # Asegurar EOS al final
         data_indices.append(indices)
 
     return torch.tensor(data_indices, dtype=torch.long), char_to_idx, idx_to_char

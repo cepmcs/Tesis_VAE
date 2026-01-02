@@ -45,9 +45,17 @@ def load_model_and_vocab():
 def decode_latent(model, z, vocab_stoi, vocab_itos, max_len=100, temp=1.0):
     # Decodificar latentes a secuencias de índices
     batch_size = z.size(0)
-    h = model.decoder_input(z).unsqueeze(0) 
-    current_token = torch.zeros(batch_size, 1, dtype=torch.long).to(DEVICE)
+    h = model.decoder_input(z).unsqueeze(0)
+    
+    # Empezar con el token SOS
+    sos_idx = vocab_stoi['[SOS]']
+    eos_idx = vocab_stoi['[EOS]']
+    
+    current_token = torch.full((batch_size, 1), sos_idx, dtype=torch.long).to(DEVICE)
     decoded_indices = []
+    
+    # Rastrear qué secuencias han terminado (generado EOS)
+    finished = torch.zeros(batch_size, dtype=torch.bool).to(DEVICE)
     
     with torch.no_grad():
         for _ in range(max_len):
@@ -56,8 +64,23 @@ def decode_latent(model, z, vocab_stoi, vocab_itos, max_len=100, temp=1.0):
             logits = model.fc_out(out.squeeze(1))
             probs = F.softmax(logits / temp, dim=-1)
             next_token = torch.multinomial(probs, 1)
+            
+            # Si ya terminó, mantener PAD (0)
+            next_token = torch.where(
+                finished.unsqueeze(1),
+                torch.zeros_like(next_token),
+                next_token
+            )
+            
             decoded_indices.append(next_token)
             current_token = next_token
+            
+            # Marcar secuencias que generaron EOS
+            finished = finished | (next_token.squeeze(1) == eos_idx)
+            
+            # Si todas terminaron, salir
+            if finished.all():
+                break
             
     decoded_indices = torch.cat(decoded_indices, dim=1)
     return decoded_indices
@@ -67,14 +90,19 @@ def indices_to_smiles(indices_tensor, vocab_itos):
     smiles_list = []
     indices_cpu = indices_tensor.cpu().numpy()
     
+    # Tokens especiales a ignorar
+    special_tokens = {'[PAD]', '[SOS]', '[EOS]', '[UNK]'}
+    
     for seq in indices_cpu:
         tokens = []
         for idx in seq:
-            if idx == 0: continue
+            if idx == 0:  # PAD
+                continue
             token = vocab_itos[idx]
-            if token in ['[EOS]', '[PAD]']:
+            if token == '[EOS]':  # Fin de secuencia
                 break
-            tokens.append(token)
+            if token not in special_tokens:
+                tokens.append(token)
         
         selfies_str = "".join(tokens)
         try:

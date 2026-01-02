@@ -26,8 +26,9 @@ class MolecularVAE(nn.Module):
         else:
             return mu
 
-    def forward(self, x):
+    def forward(self, x, sos_idx=None):
         # x shape: [batch, seq_len]
+        # x ya contiene: [SOS, token1, token2, ..., EOS, PAD, PAD, ...]
         
         # --- ENCODING ---
         embed = self.embedding(x)
@@ -38,21 +39,17 @@ class MolecularVAE(nn.Module):
         logvar = self.fc_logvar(h)
         z = self.reparameterize(mu, logvar)
         
-        # --- DECODING ---
+        # --- DECODING (Teacher Forcing) ---
         
         # 1. Preparar estado oculto inicial con z
         h_decoder = self.decoder_input(z).unsqueeze(0)
         
         # 2. Preparar entradas del decoder (shifted inputs)
-        # Creamos una columna de ceros (Token de inicio simulado)
-        batch_size, seq_len = x.size()
-        start_token = torch.zeros(batch_size, 1, dtype=torch.long, device=x.device)
+        # La entrada ya tiene SOS al inicio, usamos x[:, :-1] como input
+        # y x[:, 1:] como target (predecir el siguiente token)
+        decoder_inputs = x[:, :-1]  # [SOS, t1, t2, ..., tn-1]
         
-        # Concatenamos el cero al principio y quitamos la última letra de x
-        # Así mantenemos el mismo largo (120)
-        decoder_inputs = torch.cat([start_token, x[:, :-1]], dim=1)
-        
-        # embeddeamos la entrada desplazada
+        # embeddeamos la entrada
         embed_decoder = self.embedding(decoder_inputs)
         
         # Pasamos por la RNN
@@ -61,14 +58,22 @@ class MolecularVAE(nn.Module):
         
         return prediction, mu, logvar
 
-def vae_loss_function(recon_x, x, mu, logvar, kl_weight):
+def vae_loss_function(recon_x, x, mu, logvar, kl_weight, pad_idx=0):
+    """
+    recon_x: predicciones [batch, seq_len-1, vocab_size]
+    x: secuencia original [batch, seq_len] con formato [SOS, t1, t2, ..., EOS, PAD...]
+    El target es x[:, 1:] (sin SOS, predecir desde t1 hasta el final)
+    """
     vocab_size = recon_x.size(-1)
+    
+    # Target: todo excepto SOS (queremos predecir t1, t2, ..., EOS)
+    target = x[:, 1:]  # [batch, seq_len-1]
     
     # Cross Entropy
     recon_loss = F.cross_entropy(
         recon_x.reshape(-1, vocab_size), 
-        x.reshape(-1), 
-        ignore_index=0, 
+        target.reshape(-1), 
+        ignore_index=pad_idx, 
         reduction='sum'
     )
     

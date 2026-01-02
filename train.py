@@ -111,10 +111,13 @@ def train():
             # Índice de la letra con mayor probabilidad 
             pred_indices = prediction.argmax(dim=-1)
             
+            # Target es x[:, 1:] (sin SOS)
+            target = x[:, 1:]
+            
             # Máscara para ignorar tokens de padding 
-            mask = x != 0
+            mask = target != 0
             batch_tokens = mask.sum().item()
-            matches = (pred_indices == x) & mask
+            matches = (pred_indices == target) & mask
             
             correct_tokens += matches.sum().item()
             total_tokens += batch_tokens
@@ -152,9 +155,10 @@ def train():
                 
                 # Calcular Accuracy
                 pred_indices = prediction.argmax(dim=-1)
-                mask = x != 0
+                target = x[:, 1:]  # Target sin SOS
+                mask = target != 0
                 batch_tokens = mask.sum().item()
-                matches = (pred_indices == x) & mask
+                matches = (pred_indices == target) & mask
                 
                 val_correct_tokens += matches.sum().item()
                 val_total_tokens += batch_tokens

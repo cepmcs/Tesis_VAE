@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Datasets grandes
+*.csv
+*.tsv
+*.json
+*.txt
+data/
+datasets/
+
+# Archivos de datos procesados
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+
+# Imágenes generadas
+*.png
+*.jpg
+*.jpeg
+*.svg
+generated_*/
+
+# Logs y resultados
+logs/
+*.log
+runs/
+checkpoints/
+results/
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.bak
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp

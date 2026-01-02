@@ -17,31 +17,25 @@ Este proyecto implementa un VAE basado en redes recurrentes (GRU) para aprender 
 
 ## Instalación
 
-```bash
-pip install -r requirements.txt
-```
+    pip install -r requirements.txt
 
 ## Uso
 
 ### 1. Preparar los datos
-```bash
-python data_prep.py
-```
+
+    python data_prep.py
 
 ### 2. Entrenar el modelo
-```bash
-python train.py
-```
+
+    python train.py
 
 ### 3. Generar moléculas
-```bash
-python generate.py
-```
+
+    python generate.py
 
 ### 4. Visualizar espacio latente
-```bash
-python latent_viz.py
-```
+
+    python latent_viz.py
 
 ## Configuración del Modelo
 

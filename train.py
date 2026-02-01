@@ -2,12 +2,12 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.nn.utils import clip_grad_norm_
-import matplotlib.pyplot as plt  # Necesario para la gráfica
 from tqdm import tqdm
 import os
 
 # Importamos el modelo y la función de pérdida
-from vae_model import MolecularVAE, vae_loss_function 
+from vae_model import MolecularVAE, vae_loss_function
+from plot_utils import plot_training 
 
 # --- config ---
 BATCH_SIZE = 128       # Tamaño del batch
@@ -68,7 +68,8 @@ def train():
     # Listas para guardar historial de loss y accuracy
     history = {
         'train_loss': [], 'train_accuracy': [],
-        'val_loss': [], 'val_accuracy': []
+        'val_loss': [], 'val_accuracy': [],
+        'train_elbo': [], 'val_elbo': []  # ELBO por molécula
     }
 
     # 3. Bucle de Entrenamiento
@@ -84,8 +85,11 @@ def train():
         # ========== ENTRENAMIENTO ==========
         # Estadísticas por epoch    
         epoch_loss = 0
+        epoch_recon = 0  # Para ELBO
+        epoch_kl = 0     # Para ELBO
         correct_tokens = 0
         total_tokens = 0
+        num_samples = 0  # Contar moléculas para ELBO
         
         progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} [TRAIN]")
         
@@ -106,6 +110,9 @@ def train():
             
             # Acumular Loss 
             epoch_loss += loss.item()
+            epoch_recon += recon.item()  # Para ELBO
+            epoch_kl += kl.item()        # Para ELBO
+            num_samples += x.size(0)     # Contar moléculas
             
             #  Cálculo de Accuracy de Reconstrucción
             # Índice de la letra con mayor probabilidad 
@@ -131,16 +138,21 @@ def train():
         # Estadísticas del Epoch de Train
         train_avg_loss = epoch_loss / total_tokens
         train_avg_acc = (correct_tokens / total_tokens) * 100 if total_tokens > 0 else 0
+        train_elbo = -(epoch_recon + epoch_kl) / num_samples  # ELBO por molécula
         
         # Guardar en historial 
         history['train_loss'].append(train_avg_loss)
         history['train_accuracy'].append(train_avg_acc)
+        history['train_elbo'].append(train_elbo)
         
         # ========== VALIDACIÓN ==========
         model.eval()
         val_epoch_loss = 0
+        val_epoch_recon = 0  # Para ELBO
+        val_epoch_kl = 0     # Para ELBO
         val_correct_tokens = 0
         val_total_tokens = 0
+        val_num_samples = 0  # Contar moléculas
         
         with torch.no_grad():
             for batch in val_loader:
@@ -152,6 +164,9 @@ def train():
                 # Calcular Loss
                 loss, recon, kl = vae_loss_function(prediction, x, mu, logvar, kl_weight)
                 val_epoch_loss += loss.item()
+                val_epoch_recon += recon.item()  # Para ELBO
+                val_epoch_kl += kl.item()        # Para ELBO
+                val_num_samples += x.size(0)     # Contar moléculas
                 
                 # Calcular Accuracy
                 pred_indices = prediction.argmax(dim=-1)
@@ -166,16 +181,18 @@ def train():
         # Estadísticas de Validación
         val_avg_loss = val_epoch_loss / val_total_tokens if val_total_tokens > 0 else 0
         val_avg_acc = (val_correct_tokens / val_total_tokens) * 100 if val_total_tokens > 0 else 0
+        val_elbo = -(val_epoch_recon + val_epoch_kl) / val_num_samples  # ELBO por molécula
         
         # Guardar en historial
         history['val_loss'].append(val_avg_loss)
         history['val_accuracy'].append(val_avg_acc)
+        history['val_elbo'].append(val_elbo)
         
         # Volver a modo train
         model.train()
         
-        print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%")
-        print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%")
+        print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}% | ELBO: {train_elbo:.2f}")
+        print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}% | ELBO: {val_elbo:.2f}")
 
     # 4. Guardar modelo entrenado
     print("Guardando modelo...")
@@ -194,34 +211,7 @@ def train():
     print(f"Modelo guardado en {MODEL_SAVE_PATH}")
 
     # 5. Generar Gráfica Automática de Entrenamiento
-    plot_training(history)
-
-# --- Función para graficar loss y accuracy ---
-def plot_training(history):
-    print("Generando gráfico de entrenamiento...")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
-    # Gráfico 1: Loss
-    ax1.set_xlabel('Epochs')
-    ax1.set_ylabel('Loss por token')
-    ax1.plot(history['train_loss'], label='Train Loss', color='tab:red')
-    ax1.plot(history['val_loss'], label='Val Loss', color='tab:orange', linestyle='--')
-    ax1.set_title('Loss (Train vs Validación)')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-
-    # Gráfico 2: Accuracy
-    ax2.set_xlabel('Epochs')
-    ax2.set_ylabel('Accuracy (%)')
-    ax2.plot(history['train_accuracy'], label='Train Acc', color='tab:blue')
-    ax2.plot(history['val_accuracy'], label='Val Acc', color='tab:cyan', linestyle='--')
-    ax2.set_title('Accuracy (Train vs Validación)')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    plt.savefig(PLOT_FILE)
-    print(f"Gráfica guardada en {PLOT_FILE}")
+    plot_training(history, PLOT_FILE)
 
 if __name__ == "__main__":
     train()

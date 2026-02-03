@@ -65,8 +65,8 @@ def vae_loss_function(recon_x, x, mu, logvar, kl_weight, pad_idx=0):
     El target es x[:, 1:] (sin SOS, predecir desde t1 hasta el final)
     """
     vocab_size = recon_x.size(-1)
-    
-    # Target: todo excepto SOS (queremos predecir t1, t2, ..., EOS)
+
+   # Target es x sin el primer token (SOS)
     target = x[:, 1:]  # [batch, seq_len-1]
     
     # Cross Entropy

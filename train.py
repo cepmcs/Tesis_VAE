@@ -82,7 +82,7 @@ def train():
         else:
             kl_weight = KL_END
 
-        # ========== ENTRENAMIENTO ==========
+        #  ENTRENAMIENTO 
         # Estadísticas por epoch    
         epoch_loss = 0
         epoch_recon = 0  # Para ELBO
@@ -145,7 +145,7 @@ def train():
         history['train_accuracy'].append(train_avg_acc)
         history['train_elbo'].append(train_elbo)
         
-        # ========== VALIDACIÓN ==========
+        #  VALIDACIÓN 
         model.eval()
         val_epoch_loss = 0
         val_epoch_recon = 0  # Para ELBO

@@ -11,7 +11,6 @@ class MolecularVAE(nn.Module):
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=0)
         # Procesa secuencia y extrae representación
         self.encoder_rnn = nn.GRU(embed_size, hidden_size, batch_first=True)
-        
         # Proyecta a media del espacio latente
         self.fc_mu = nn.Linear(hidden_size, latent_size)
         # Proyecta a log-varianza del espacio latente

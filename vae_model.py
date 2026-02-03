@@ -7,15 +7,22 @@ class MolecularVAE(nn.Module):
         super(MolecularVAE, self).__init__()
         
         # --- 1. ENCODER ---
+        # Convierte tokens a vectores densos
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=0)
+        # Procesa secuencia y extrae representación
         self.encoder_rnn = nn.GRU(embed_size, hidden_size, batch_first=True)
         
+        # Proyecta a media del espacio latente
         self.fc_mu = nn.Linear(hidden_size, latent_size)
+        # Proyecta a log-varianza del espacio latente
         self.fc_logvar = nn.Linear(hidden_size, latent_size)
         
         # --- 2. DECODER ---
+        # Convierte vector latente a estado inicial del decoder
         self.decoder_input = nn.Linear(latent_size, hidden_size)
+        # Genera secuencia token por token
         self.decoder_rnn = nn.GRU(embed_size, hidden_size, batch_first=True)
+        # Proyecta a puntajes crudos sobre vocabulario (scores sin normalizar)
         self.fc_out = nn.Linear(hidden_size, vocab_size)
         
     def reparameterize(self, mu, logvar):

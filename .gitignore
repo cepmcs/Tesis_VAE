@@ -31,8 +31,8 @@ ENV/
 *.tsv
 data/
 
-# Resultados generados
-outputs/
+# Resultados generados (ignorar binarios pesados, no .png ni .json)
+outputs/*.txt
 
 # Archivos de datos procesados y modelos
 *.pt

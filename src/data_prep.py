@@ -4,13 +4,14 @@ import torch
 from tqdm import tqdm
 import os
 import urllib.request
-import moses
 
-train = moses.get_dataset('train')
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # config
 DATA_URL = "https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv"
-FILENAME = "zinc250k.csv"
-PROCESSED_FILE = "data_processed.pt"
+FILENAME = os.path.join(ROOT_DIR, "data", "zinc250k.csv")
+PROCESSED_FILE = os.path.join(ROOT_DIR, "data", "data_processed.pt")
 MAX_LEN = 100 
 
 def get_data():
@@ -80,6 +81,7 @@ def process_data(smiles_list):
     return torch.tensor(data_indices, dtype=torch.long), char_to_idx, idx_to_char
 
 if __name__ == "__main__":
+    os.makedirs(os.path.dirname(FILENAME), exist_ok=True)
     smiles = get_data()
     tensor_data, c2i, i2c = process_data(smiles)
     

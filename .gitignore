@@ -29,17 +29,19 @@ ENV/
 # Datasets grandes
 *.csv
 *.tsv
-*.json
 data/
-datasets/
 
-# Archivos de datos procesados
+# Resultados generados
+outputs/
+
+# Archivos de datos procesados y modelos
 *.pt
 *.pth
 *.pkl
 *.pickle
 *.h5
 *.hdf5
+models/
 
 # Logs y resultados
 logs/

@@ -5,7 +5,12 @@ Ejecutar en el entorno moses_fork:
 """
 import argparse
 import json
+import os
+import sys
 import moses
+
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def load_smiles(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -13,9 +18,9 @@ def load_smiles(path):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluar SMILES generados con MOSES")
-    parser.add_argument("--gen", default="generated_smiles.txt",
+    parser.add_argument("--gen", default=os.path.join(ROOT_DIR, "outputs", "generated_smiles.txt"),
                         help="Archivo TXT con 1 SMILES por línea")
-    parser.add_argument("--out", default="metrics.json",
+    parser.add_argument("--out", default=os.path.join(ROOT_DIR, "outputs", "metrics.json"),
                         help="Archivo JSON de salida con métricas")
     args = parser.parse_args()
 

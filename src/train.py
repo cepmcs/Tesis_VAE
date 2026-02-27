@@ -5,6 +5,12 @@ from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 import os
 
+import sys
+
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 # Importamos el modelo y la función de pérdida
 from vae_model import MolecularVAE, vae_loss_function
 from plot_utils import plot_training 
@@ -27,9 +33,9 @@ KL_ANNEAL_EPOCHS = 20 # Número de epochs para hacer annealing
 
 # Paths y dispositivo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATA_PATH = "data_processed.pt" 
-MODEL_SAVE_PATH = "vae_model.pth" 
-PLOT_FILE = "training_loss.png" # Nombre de la gráfica final
+DATA_PATH = os.path.join(ROOT_DIR, "data", "data_processed.pt")
+MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
+PLOT_FILE = os.path.join(ROOT_DIR, "outputs", "training_loss.png")
 
 # --- Función de Entrenamiento ---
 def train():
@@ -39,6 +45,9 @@ def train():
     if not os.path.exists(DATA_PATH):
         print("No se encuentra data_processed.pt")
         return
+
+    os.makedirs(os.path.join(ROOT_DIR, "models"), exist_ok=True)
+    os.makedirs(os.path.join(ROOT_DIR, "outputs"), exist_ok=True)
 
     # Cargar datos preprocesados
     saved_data = torch.load(DATA_PATH)

@@ -4,6 +4,12 @@ import selfies as sf
 from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
+import os
+import sys
+
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Importar tu arquitectura definida en vae_model.py
 from vae_model import MolecularVAE
@@ -12,13 +18,13 @@ from vae_model import MolecularVAE
 RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
-MODEL_PATH = "vae_model.pth"
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
 NUM_MOLECULES = 30000   # MOSES recomienda al menos 30k
 MAX_LEN = 100          
 TEMP = 1.0             # Temperatura para muestreo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-OUTPUT_IMG = "generated_molecules.png"
-OUTPUT_SMILES = "generated_smiles.txt"  # Archivo para MOSES
+OUTPUT_IMG = os.path.join(ROOT_DIR, "outputs", "generated_molecules.png")
+OUTPUT_SMILES = os.path.join(ROOT_DIR, "outputs", "generated_smiles.txt")
 
 def load_model_and_vocab():
     # Cargar el modelo entrenado y los vocabularios
@@ -117,6 +123,8 @@ def indices_to_smiles(indices_tensor, vocab_itos):
 def main():
     print(f"--- Generando moléculas con {MODEL_PATH} ---")
     
+    os.makedirs(os.path.dirname(OUTPUT_SMILES), exist_ok=True)
+
     # 1. Cargar modelo
     model, stoi, itos, latent_dim = load_model_and_vocab()
     

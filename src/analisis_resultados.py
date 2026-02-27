@@ -8,6 +8,12 @@ import seaborn as sns
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 from rdkit import RDLogger
+import os
+import sys
+
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Importar arquitectura del VAE
 from vae_model import MolecularVAE
@@ -16,13 +22,13 @@ from vae_model import MolecularVAE
 RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
-MODEL_PATH = "vae_model.pth"
-ZINC_PATH = "zinc250k.csv"
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
+ZINC_PATH = os.path.join(ROOT_DIR, "data", "zinc250k.csv")
 NUM_GENERATED = 5000      # Número de moléculas a generar
 MAX_LEN = 100
 TEMP = 1.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-OUTPUT_PLOT = "comparacion_propiedades.png"
+OUTPUT_PLOT = os.path.join(ROOT_DIR, "outputs", "comparacion_propiedades.png")
 
 
 def load_model_and_vocab():
@@ -310,6 +316,7 @@ def main():
     
     # 5. Generar visualización
     print(f"\n[5/5] Generando gráficos comparativos...")
+    os.makedirs(os.path.dirname(OUTPUT_PLOT), exist_ok=True)
     plot_comparison(df_original, df_generated, OUTPUT_PLOT)
     
     # Imprimir estadísticas

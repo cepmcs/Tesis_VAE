@@ -1,18 +1,23 @@
 import os
+import sys
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 
+# Directorio raíz del proyecto (un nivel arriba de src/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from vae_model import MolecularVAE
 
 # Configuración por defecto (sin CLI)
-MODEL_PATH = "vae_model.pth"
-DATA_PATH = "data_processed.pt"
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
+DATA_PATH = os.path.join(ROOT_DIR, "data", "data_processed.pt")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 256
 MAX_SAMPLES = 5000  # usa todas si es menor que el dataset
-OUT_PNG = "latent_pca.png"
+OUT_PNG = os.path.join(ROOT_DIR, "outputs", "latent_pca.png")
 SAVE_NPY = None  # opcional: "latent_coords.npy"
 SEED = 0
 

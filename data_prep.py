@@ -4,7 +4,9 @@ import torch
 from tqdm import tqdm
 import os
 import urllib.request
+import moses
 
+train = moses.get_dataset('train')
 # config
 DATA_URL = "https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv"
 FILENAME = "zinc250k.csv"

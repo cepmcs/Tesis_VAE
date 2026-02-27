@@ -13,11 +13,12 @@ RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
 MODEL_PATH = "vae_model.pth"
-NUM_MOLECULES = 10     # Generaremos 10
+NUM_MOLECULES = 30000   # MOSES recomienda al menos 30k
 MAX_LEN = 100          
-TEMP = 1.0           # Temperatura para muestreo
+TEMP = 1.0             # Temperatura para muestreo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 OUTPUT_IMG = "generated_molecules.png"
+OUTPUT_SMILES = "generated_smiles.txt"  # Archivo para MOSES
 
 def load_model_and_vocab():
     # Cargar el modelo entrenado y los vocabularios
@@ -120,30 +121,44 @@ def main():
     model, stoi, itos, latent_dim = load_model_and_vocab()
     
     # 2. Muestrear latentes (Prior Normal)
-    z = torch.randn(NUM_MOLECULES, latent_dim).to(DEVICE)
+    # Generamos en lotes para no saturar memoria
+    BATCH_SIZE = 500
+    all_smiles = []
     
-    # 3. Decodificar
-    indices = decode_latent(model, z, stoi, itos, MAX_LEN, TEMP)
-    generated_smiles = indices_to_smiles(indices, itos)
+    for i in range(0, NUM_MOLECULES, BATCH_SIZE):
+        batch = min(BATCH_SIZE, NUM_MOLECULES - i)
+        z = torch.randn(batch, latent_dim).to(DEVICE)
+        indices = decode_latent(model, z, stoi, itos, MAX_LEN, TEMP)
+        batch_smiles = indices_to_smiles(indices, itos)
+        all_smiles.extend(batch_smiles)
+        print(f"  Generadas {len(all_smiles)}/{NUM_MOLECULES}...")
     
-    # 4. Filtrar válidas
+    # 3. Filtrar válidas
+    valid_smiles = []
     valid_mols = []
     legends = []
     
-    print("\n--- Procesando estructuras ---")
-    for i, sm in enumerate(generated_smiles):
+    print("\n--- Filtrando moléculas válidas ---")
+    for i, sm in enumerate(all_smiles):
         if sm:
             mol = Chem.MolFromSmiles(sm)
             if mol:
+                canonical = Chem.MolToSmiles(mol)
+                valid_smiles.append(canonical)
                 valid_mols.append(mol)
                 legends.append(f"Mol {i}")
-                print(f"[{i}] Generada: {sm}")
 
-    print(f"\nTotal válidas: {len(valid_mols)} / {NUM_MOLECULES}")
+    print(f"\nTotal válidas: {len(valid_smiles)} / {NUM_MOLECULES}")
 
-    # 5. GENERAR IMAGEN CON RDKIT
+    # 4. GUARDAR SMILES PARA MOSES (1 por línea)
+    with open(OUTPUT_SMILES, "w") as f:
+        for sm in valid_smiles:
+            f.write(sm + "\n")
+    print(f"SMILES guardadas en: {OUTPUT_SMILES}")
+
+    # 5. GENERAR IMAGEN CON RDKIT (primeras 50)
     if valid_mols:
-        print(f"{OUTPUT_IMG}...")
+        print(f"Generando imagen: {OUTPUT_IMG}...")
         img = Draw.MolsToGridImage(
             valid_mols[:50],           # Máximo 50 moléculas en la imagen
             molsPerRow=5,              # 5 columnas

@@ -22,7 +22,7 @@ EMBED_DIM = 128
 # KL ANNEALING 
 # Valores para el KL Annealing
 KL_START = 0 
-KL_END = 0.05       
+KL_END = 0.3      
 KL_ANNEAL_EPOCHS = 20 # Número de epochs para hacer annealing
 
 # Paths y dispositivo
@@ -85,8 +85,6 @@ def train():
         #  ENTRENAMIENTO 
         # Estadísticas por epoch    
         epoch_loss = 0
-        epoch_recon = 0  # Para ELBO
-        epoch_kl = 0     # Para ELBO
         correct_tokens = 0
         total_tokens = 0
         num_samples = 0  # Contar moléculas para ELBO
@@ -110,8 +108,6 @@ def train():
             
             # Acumular Loss 
             epoch_loss += loss.item()
-            epoch_recon += recon.item()  # Para ELBO
-            epoch_kl += kl.item()        # Para ELBO
             num_samples += x.size(0)     # Contar moléculas
             
             #  Cálculo de Accuracy de Reconstrucción
@@ -138,7 +134,7 @@ def train():
         # Estadísticas del Epoch de Train
         train_avg_loss = epoch_loss / total_tokens
         train_avg_acc = (correct_tokens / total_tokens) * 100 if total_tokens > 0 else 0
-        train_elbo = -(epoch_recon + epoch_kl) / num_samples  # ELBO por molécula
+        train_elbo = -epoch_loss / num_samples  # ELBO por molécula
         
         # Guardar en historial 
         history['train_loss'].append(train_avg_loss)
@@ -148,8 +144,6 @@ def train():
         #  VALIDACIÓN 
         model.eval()
         val_epoch_loss = 0
-        val_epoch_recon = 0  # Para ELBO
-        val_epoch_kl = 0     # Para ELBO
         val_correct_tokens = 0
         val_total_tokens = 0
         val_num_samples = 0  # Contar moléculas
@@ -164,8 +158,6 @@ def train():
                 # Calcular Loss
                 loss, recon, kl = vae_loss_function(prediction, x, mu, logvar, kl_weight)
                 val_epoch_loss += loss.item()
-                val_epoch_recon += recon.item()  # Para ELBO
-                val_epoch_kl += kl.item()        # Para ELBO
                 val_num_samples += x.size(0)     # Contar moléculas
                 
                 # Calcular Accuracy
@@ -181,7 +173,7 @@ def train():
         # Estadísticas de Validación
         val_avg_loss = val_epoch_loss / val_total_tokens if val_total_tokens > 0 else 0
         val_avg_acc = (val_correct_tokens / val_total_tokens) * 100 if val_total_tokens > 0 else 0
-        val_elbo = -(val_epoch_recon + val_epoch_kl) / val_num_samples  # ELBO por molécula
+        val_elbo = -val_epoch_loss / val_num_samples  # ELBO por molécula
         
         # Guardar en historial
         history['val_loss'].append(val_avg_loss)

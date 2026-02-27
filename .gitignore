@@ -30,7 +30,6 @@ ENV/
 *.csv
 *.tsv
 *.json
-*.txt
 data/
 datasets/
 

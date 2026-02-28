@@ -24,7 +24,7 @@ RDLogger.DisableLog('rdApp.*')
 # --- CONFIGURACIÓN ---
 MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
 ZINC_PATH = os.path.join(ROOT_DIR, "data", "zinc250k.csv")
-NUM_GENERATED = 5000      # Número de moléculas a generar
+NUM_GENERATED = 30000      # Número de moléculas a generar
 MAX_LEN = 100
 TEMP = 1.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

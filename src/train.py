@@ -78,7 +78,6 @@ def train():
     history = {
         'train_loss': [], 'train_accuracy': [],
         'val_loss': [], 'val_accuracy': [],
-        'train_elbo': [], 'val_elbo': []  # ELBO por molécula
     }
 
     # 3. Bucle de Entrenamiento
@@ -96,7 +95,6 @@ def train():
         epoch_loss = 0
         correct_tokens = 0
         total_tokens = 0
-        num_samples = 0  # Contar moléculas para ELBO
         
         progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} [TRAIN]")
         
@@ -117,7 +115,6 @@ def train():
             
             # Acumular Loss 
             epoch_loss += loss.item()
-            num_samples += x.size(0)     # Contar moléculas
             
             #  Cálculo de Accuracy de Reconstrucción
             # Índice de la letra con mayor probabilidad 
@@ -143,19 +140,16 @@ def train():
         # Estadísticas del Epoch de Train
         train_avg_loss = epoch_loss / total_tokens
         train_avg_acc = (correct_tokens / total_tokens) * 100 if total_tokens > 0 else 0
-        train_elbo = -epoch_loss / num_samples  # ELBO por molécula
         
         # Guardar en historial 
         history['train_loss'].append(train_avg_loss)
         history['train_accuracy'].append(train_avg_acc)
-        history['train_elbo'].append(train_elbo)
         
         #  VALIDACIÓN 
         model.eval()
         val_epoch_loss = 0
         val_correct_tokens = 0
         val_total_tokens = 0
-        val_num_samples = 0  # Contar moléculas
         
         with torch.no_grad():
             for batch in val_loader:
@@ -167,7 +161,6 @@ def train():
                 # Calcular Loss
                 loss, recon, kl = vae_loss_function(prediction, x, mu, logvar, kl_weight)
                 val_epoch_loss += loss.item()
-                val_num_samples += x.size(0)     # Contar moléculas
                 
                 # Calcular Accuracy
                 pred_indices = prediction.argmax(dim=-1)
@@ -182,18 +175,16 @@ def train():
         # Estadísticas de Validación
         val_avg_loss = val_epoch_loss / val_total_tokens if val_total_tokens > 0 else 0
         val_avg_acc = (val_correct_tokens / val_total_tokens) * 100 if val_total_tokens > 0 else 0
-        val_elbo = -val_epoch_loss / val_num_samples  # ELBO por molécula
         
         # Guardar en historial
         history['val_loss'].append(val_avg_loss)
         history['val_accuracy'].append(val_avg_acc)
-        history['val_elbo'].append(val_elbo)
         
         # Volver a modo train
         model.train()
         
-        print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}% | ELBO: {train_elbo:.2f}")
-        print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}% | ELBO: {val_elbo:.2f}")
+        print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%")
+        print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%")
 
     # 4. Guardar modelo entrenado
     print("Guardando modelo...")

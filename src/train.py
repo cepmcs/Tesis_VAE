@@ -3,30 +3,22 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
+from vae_model import MolecularVAE, vae_loss_function
+from plot_utils import plot_training 
 import os
-
 import sys
 
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Importamos el modelo y la función de pérdida
-from vae_model import MolecularVAE, vae_loss_function
-from plot_utils import plot_training 
-
 # --- config ---
 BATCH_SIZE = 128       # Tamaño del batch
 EPOCHS = 50           # Número total de epochs
 LEARNING_RATE = 1e-3  # Tasa de aprendizaje
-
-# Dimensiones 128/128/128
 LATENT_DIM = 128      
 HIDDEN_DIM = 128      
 EMBED_DIM = 128       
-
-# KL ANNEALING 
-# Valores para el KL Annealing
 KL_START = 0 
 KL_END = 0.3      
 KL_ANNEAL_EPOCHS = 20 # Número de epochs para hacer annealing
@@ -44,7 +36,6 @@ def train():
     # 1. Cargar Datos
     if not os.path.exists(DATA_PATH):
         print("No se encuentra data_processed.pt")
-        return
 
     os.makedirs(os.path.join(ROOT_DIR, "models"), exist_ok=True)
     os.makedirs(os.path.join(ROOT_DIR, "outputs"), exist_ok=True)

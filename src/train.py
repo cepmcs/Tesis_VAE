@@ -96,7 +96,7 @@ def train():
             prediction, mu, logvar = model(x)
             
             # Calcular Error 
-            loss, recon, kl = vae_loss_function(prediction, x, mu, logvar, kl_weight)
+            loss = vae_loss_function(prediction, x, mu, logvar, kl_weight)
             
             # Backward 
             optimizer.zero_grad()

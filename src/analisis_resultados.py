@@ -23,7 +23,7 @@ RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
 MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
-ZINC_PATH = os.path.join(ROOT_DIR, "data", "zinc250k.csv")
+MOSES_PATH = os.path.join(ROOT_DIR, "data", "moses.csv")
 NUM_GENERATED = 30000      # Número de moléculas a generar
 MAX_LEN = 100
 TEMP = 1.0
@@ -172,19 +172,22 @@ def calculate_properties(smiles_list, source_name=""):
     return df
 
 
-def load_zinc_dataset(path, sample_size=None):
-    """Carga el dataset ZINC250k y extrae SMILES."""
-    print(f"Cargando dataset ZINC250k desde {path}...")
+def load_moses_dataset(path, sample_size=None):
+    """Carga el dataset MOSES y extrae SMILES."""
+    print(f"Cargando dataset MOSES desde {path}...")
     df = pd.read_csv(path)
     
-    # Limpiar SMILES (quitar saltos de línea)
-    df['smiles'] = df['smiles'].str.strip()
+    # MOSES usa la columna "SMILES" y "SPLIT". Filtrar por train
+    df_train = df[df['SPLIT'] == 'train'].copy()
     
-    if sample_size and sample_size < len(df):
-        df = df.sample(n=sample_size, random_state=42)
+    # Limpiar SMILES (quitar saltos de línea)
+    df_train['SMILES'] = df_train['SMILES'].str.strip()
+    
+    if sample_size and sample_size < len(df_train):
+        df_train = df_train.sample(n=sample_size, random_state=42)
         print(f"  Muestra de {sample_size} moléculas seleccionada")
     
-    return df['smiles'].tolist()
+    return df_train['SMILES'].tolist()
 
 
 def plot_comparison(df_original, df_generated, output_path):
@@ -198,11 +201,11 @@ def plot_comparison(df_original, df_generated, output_path):
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
     # Colores
-    colors = {'ZINC250k (Original)': '#2E86AB', 'Generadas (VAE)': '#E94F37'}
+    colors = {'MOSES (Original)': '#2E86AB', 'Generadas (VAE)': '#E94F37'}
     
     # --- Gráfico 1: Distribución de LogP ---
     ax1 = axes[0]
-    for source in ['ZINC250k (Original)', 'Generadas (VAE)']:
+    for source in ['MOSES (Original)', 'Generadas (VAE)']:
         data = df_combined[df_combined['Source'] == source]['LogP']
         sns.kdeplot(
             data=data,
@@ -218,14 +221,14 @@ def plot_comparison(df_original, df_generated, output_path):
     ax1.set_ylabel('Densidad', fontsize=12)
     ax1.set_title('Distribución de LogP', fontsize=14, fontweight='bold')
     ax1.legend(fontsize=10)
-    ax1.axvline(x=df_original['LogP'].mean(), color=colors['ZINC250k (Original)'], 
+    ax1.axvline(x=df_original['LogP'].mean(), color=colors['MOSES (Original)'], 
                 linestyle='--', alpha=0.7, label=f"Media Original: {df_original['LogP'].mean():.2f}")
     ax1.axvline(x=df_generated['LogP'].mean(), color=colors['Generadas (VAE)'], 
                 linestyle='--', alpha=0.7, label=f"Media Generadas: {df_generated['LogP'].mean():.2f}")
     
     # --- Gráfico 2: Distribución de Peso Molecular ---
     ax2 = axes[1]
-    for source in ['ZINC250k (Original)', 'Generadas (VAE)']:
+    for source in ['MOSES (Original)', 'Generadas (VAE)']:
         data = df_combined[df_combined['Source'] == source]['MW']
         sns.kdeplot(
             data=data,
@@ -241,7 +244,7 @@ def plot_comparison(df_original, df_generated, output_path):
     ax2.set_ylabel('Densidad', fontsize=12)
     ax2.set_title('Distribución de Peso Molecular', fontsize=14, fontweight='bold')
     ax2.legend(fontsize=10)
-    ax2.axvline(x=df_original['MW'].mean(), color=colors['ZINC250k (Original)'], 
+    ax2.axvline(x=df_original['MW'].mean(), color=colors['MOSES (Original)'], 
                 linestyle='--', alpha=0.7)
     ax2.axvline(x=df_generated['MW'].mean(), color=colors['Generadas (VAE)'], 
                 linestyle='--', alpha=0.7)
@@ -259,7 +262,7 @@ def print_statistics(df_original, df_generated):
     print("ESTADÍSTICAS COMPARATIVAS")
     print("="*60)
     
-    print(f"\n{'Métrica':<25} {'ZINC250k':<20} {'Generadas':<20}")
+    print(f"\n{'Métrica':<25} {'MOSES':<20} {'Generadas':<20}")
     print("-"*65)
     
     # Número de moléculas válidas
@@ -284,7 +287,7 @@ def print_statistics(df_original, df_generated):
 
 def main():
     print("="*60)
-    print("ANÁLISIS COMPARATIVO: Moléculas Generadas vs ZINC250k")
+    print("ANÁLISIS COMPARATIVO: Moléculas Generadas vs MOSES")
     print("="*60)
     
     # 1. Cargar modelo VAE
@@ -297,13 +300,13 @@ def main():
     generated_smiles = generate_molecules(model, stoi, itos, latent_dim, NUM_GENERATED)
     
     # 3. Cargar dataset original (muestra del mismo tamaño para comparación justa)
-    print(f"\n[3/5] Cargando dataset ZINC250k...")
-    original_smiles = load_zinc_dataset(ZINC_PATH, sample_size=NUM_GENERATED)
+    print(f"\n[3/5] Cargando dataset MOSES...")
+    original_smiles = load_moses_dataset(MOSES_PATH, sample_size=NUM_GENERATED)
     
     # 4. Calcular propiedades
     print(f"\n[4/5] Calculando propiedades moleculares...")
     print("  Procesando moléculas originales...")
-    df_original = calculate_properties(original_smiles, source_name='ZINC250k (Original)')
+    df_original = calculate_properties(original_smiles, source_name='MOSES (Original)')
     print(f"    -> {len(df_original)} moléculas válidas")
     
     print("  Procesando moléculas generadas...")

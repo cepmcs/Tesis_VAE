@@ -8,15 +8,15 @@ import urllib.request
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# config
-DATA_URL = "https://raw.githubusercontent.com/aspuru-guzik-group/chemical_vae/master/models/zinc_properties/250k_rndm_zinc_drugs_clean_3.csv"
-FILENAME = os.path.join(ROOT_DIR, "data", "zinc250k.csv")
-PROCESSED_FILE = os.path.join(ROOT_DIR, "data", "data_processed.pt")
+# config para MOSES
+DATA_URL = "https://media.githubusercontent.com/media/molecularsets/moses/master/data/dataset_v1.csv"
+FILENAME = os.path.join(ROOT_DIR, "data", "moses.csv")
+PROCESSED_FILE = os.path.join(ROOT_DIR, "data", "moses_processed.pt")
 MAX_LEN = 100 
 
 def get_data():
     if not os.path.exists(FILENAME):
-        print(f"Descargando datos...")
+        print(f"Descargando datos de MOSES...")
         try:
             urllib.request.urlretrieve(DATA_URL, FILENAME)
         except Exception as e:
@@ -24,9 +24,14 @@ def get_data():
             exit()
     
     df = pd.read_csv(FILENAME)
+    
+    # MOSES usa la columna "SMILES" y "SPLIT". Vamos a usar solo el split de entrenamiento
+    df_train = df[df['SPLIT'] == 'train'].copy()
+    
     # Limpiamos espacios
-    df['smiles'] = df['smiles'].str.strip()
-    return df['smiles'].tolist()
+    df_train['SMILES'] = df_train['SMILES'].str.strip()
+    
+    return df_train['SMILES'].tolist()
 
 def process_data(smiles_list):
     print(f"Procesando {len(smiles_list)} moléculas...")

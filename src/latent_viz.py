@@ -13,7 +13,7 @@ from vae_model import MolecularVAE
 
 # Configuración por defecto (sin CLI)
 MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
-DATA_PATH = os.path.join(ROOT_DIR, "data", "data_processed.pt")
+DATA_PATH = os.path.join(ROOT_DIR, "data", "moses_processed.pt")
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 256
 MAX_SAMPLES = 30000  # usa todas si es menor que el dataset

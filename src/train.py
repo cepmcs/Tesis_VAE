@@ -14,18 +14,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # --- config ---
 BATCH_SIZE = 128       # Tamaño del batch
-EPOCHS = 50           # Número total de epochs
+EPOCHS = 20           # Número total de epochs
 LEARNING_RATE = 1e-3  # Tasa de aprendizaje
 LATENT_DIM = 128      
 HIDDEN_DIM = 128      
 EMBED_DIM = 128       
 KL_START = 0 
 KL_END = 0.3      
-KL_ANNEAL_EPOCHS = 20 # Número de epochs para hacer annealing
+KL_ANNEAL_EPOCHS = 8  # Número de epochs para hacer annealing
 
 # Paths y dispositivo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATA_PATH = os.path.join(ROOT_DIR, "data", "data_processed.pt")
+DATA_PATH = os.path.join(ROOT_DIR, "data", "moses_processed.pt")
 MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
 PLOT_FILE = os.path.join(ROOT_DIR, "outputs", "training_loss.png")
 
@@ -35,7 +35,7 @@ def train():
     
     # 1. Cargar Datos
     if not os.path.exists(DATA_PATH):
-        print("No se encuentra data_processed.pt")
+        print(f"No se encuentra {DATA_PATH}")
 
     os.makedirs(os.path.join(ROOT_DIR, "models"), exist_ok=True)
     os.makedirs(os.path.join(ROOT_DIR, "outputs"), exist_ok=True)
@@ -96,7 +96,7 @@ def train():
             prediction, mu, logvar = model(x)
             
             # Calcular Error 
-            loss = vae_loss_function(prediction, x, mu, logvar, kl_weight)
+            loss, recon_loss, kl_loss = vae_loss_function(prediction, x, mu, logvar, kl_weight)
             
             # Backward 
             optimizer.zero_grad()

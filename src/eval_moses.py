@@ -8,9 +8,18 @@ import json
 import os
 import sys
 import moses
+import moses.metrics.metrics as metrics_module
+import numpy as np
+from scipy.spatial.distance import cosine
 
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Parche temporal para corregir el overflow de float32 en moses/scipy
+def safe_cos_distance(u, v):
+    return cosine(np.asarray(u, dtype=np.float64), np.asarray(v, dtype=np.float64))
+
+metrics_module.cos_distance = safe_cos_distance
 
 def load_smiles(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -30,7 +39,7 @@ def main():
 
     # Calcular métricas MOSES
     print("Calculando métricas (puede tardar unos minutos)...")
-    metrics = moses.get_all_metrics(gen)
+    metrics = moses.get_all_metrics(gen, n_jobs=1)
 
     # Mostrar resultados
     print("\n=== Métricas MOSES ===")

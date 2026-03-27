@@ -7,9 +7,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from rdkit import Chem
 from rdkit.Chem import Descriptors
-from rdkit import RDLogger
+from rdkit.Chem import QED
+from rdkit.Chem import RDConfig
 import os
 import sys
+
+# Agregar la ruta de contribuciones de RDKit para SA_Score
+sys.path.append(os.path.join(RDConfig.RDContribDir, 'SA_Score'))
+import sascorer
+
+from rdkit import RDLogger
 
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -141,11 +148,13 @@ def generate_molecules(model, vocab_stoi, vocab_itos, latent_dim, num_molecules,
 
 def calculate_properties(smiles_list, source_name=""):
     """
-    Calcula Peso Molecular (MW) y LogP para una lista de SMILES.
+    Calcula Peso Molecular (MW), LogP, QED y SA para una lista de SMILES.
     Retorna un DataFrame con las propiedades.
     """
     mw_list = []
     logp_list = []
+    qed_list = []
+    sa_list = []
     valid_smiles = []
     
     for sm in smiles_list:
@@ -156,8 +165,13 @@ def calculate_properties(smiles_list, source_name=""):
             try:
                 mw = Descriptors.MolWt(mol)
                 logp = Descriptors.MolLogP(mol)
+                qed_val = QED.qed(mol)
+                sa_val = sascorer.calculateScore(mol)
+                
                 mw_list.append(mw)
                 logp_list.append(logp)
+                qed_list.append(qed_val)
+                sa_list.append(sa_val)
                 valid_smiles.append(sm)
             except:
                 continue
@@ -166,6 +180,8 @@ def calculate_properties(smiles_list, source_name=""):
         'SMILES': valid_smiles,
         'MW': mw_list,
         'LogP': logp_list,
+        'QED': qed_list,
+        'SA': sa_list,
         'Source': source_name
     })
     
@@ -191,20 +207,20 @@ def load_moses_dataset(path, sample_size=None):
 
 
 def plot_comparison(df_original, df_generated, output_path):
-    """Genera gráficos KDE comparativos de MW y LogP."""
+    """Genera gráficos KDE comparativos de MW, LogP, QED y SA."""
     
     # Combinar dataframes
     df_combined = pd.concat([df_original, df_generated], ignore_index=True)
     
     # Configurar estilo
     sns.set_style("whitegrid")
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     
     # Colores
     colors = {'MOSES (Original)': '#2E86AB', 'Generadas (VAE)': '#E94F37'}
     
     # --- Gráfico 1: Distribución de LogP ---
-    ax1 = axes[0]
+    ax1 = axes[0, 0]
     for source in ['MOSES (Original)', 'Generadas (VAE)']:
         data = df_combined[df_combined['Source'] == source]['LogP']
         sns.kdeplot(
@@ -227,7 +243,7 @@ def plot_comparison(df_original, df_generated, output_path):
                 linestyle='--', alpha=0.7, label=f"Media Generadas: {df_generated['LogP'].mean():.2f}")
     
     # --- Gráfico 2: Distribución de Peso Molecular ---
-    ax2 = axes[1]
+    ax2 = axes[0, 1]
     for source in ['MOSES (Original)', 'Generadas (VAE)']:
         data = df_combined[df_combined['Source'] == source]['MW']
         sns.kdeplot(
@@ -247,6 +263,52 @@ def plot_comparison(df_original, df_generated, output_path):
     ax2.axvline(x=df_original['MW'].mean(), color=colors['MOSES (Original)'], 
                 linestyle='--', alpha=0.7)
     ax2.axvline(x=df_generated['MW'].mean(), color=colors['Generadas (VAE)'], 
+                linestyle='--', alpha=0.7)
+
+    # --- Gráfico 3: Distribución de QED ---
+    ax3 = axes[1, 0]
+    for source in ['MOSES (Original)', 'Generadas (VAE)']:
+        data = df_combined[df_combined['Source'] == source]['QED']
+        sns.kdeplot(
+            data=data,
+            ax=ax3,
+            label=source,
+            color=colors[source],
+            linewidth=2,
+            fill=True,
+            alpha=0.3
+        )
+    
+    ax3.set_xlabel('QED', fontsize=12)
+    ax3.set_ylabel('Densidad', fontsize=12)
+    ax3.set_title('Distribución de QED', fontsize=14, fontweight='bold')
+    ax3.legend(fontsize=10)
+    ax3.axvline(x=df_original['QED'].mean(), color=colors['MOSES (Original)'], 
+                linestyle='--', alpha=0.7)
+    ax3.axvline(x=df_generated['QED'].mean(), color=colors['Generadas (VAE)'], 
+                linestyle='--', alpha=0.7)
+
+    # --- Gráfico 4: Distribución de SA (Synthetic Accessibility) ---
+    ax4 = axes[1, 1]
+    for source in ['MOSES (Original)', 'Generadas (VAE)']:
+        data = df_combined[df_combined['Source'] == source]['SA']
+        sns.kdeplot(
+            data=data,
+            ax=ax4,
+            label=source,
+            color=colors[source],
+            linewidth=2,
+            fill=True,
+            alpha=0.3
+        )
+    
+    ax4.set_xlabel('SA Score', fontsize=12)
+    ax4.set_ylabel('Densidad', fontsize=12)
+    ax4.set_title('Accesibilidad Sintética (SA)', fontsize=14, fontweight='bold')
+    ax4.legend(fontsize=10)
+    ax4.axvline(x=df_original['SA'].mean(), color=colors['MOSES (Original)'], 
+                linestyle='--', alpha=0.7)
+    ax4.axvline(x=df_generated['SA'].mean(), color=colors['Generadas (VAE)'], 
                 linestyle='--', alpha=0.7)
     
     plt.tight_layout()
@@ -281,6 +343,16 @@ def print_statistics(df_original, df_generated):
     print(f"{'Desv. Estándar':<25} {df_original['MW'].std():<20.3f} {df_generated['MW'].std():<20.3f}")
     print(f"{'Mínimo':<25} {df_original['MW'].min():<20.3f} {df_generated['MW'].min():<20.3f}")
     print(f"{'Máximo':<25} {df_original['MW'].max():<20.3f} {df_generated['MW'].max():<20.3f}")
+
+    # QED
+    print(f"\n--- QED (Drug-likeness) ---")
+    print(f"{'Media':<25} {df_original['QED'].mean():<20.3f} {df_generated['QED'].mean():<20.3f}")
+    print(f"{'Desv. Estándar':<25} {df_original['QED'].std():<20.3f} {df_generated['QED'].std():<20.3f}")
+    
+    # SA
+    print(f"\n--- SA Score (Synthetic Accessibility) ---")
+    print(f"{'Media':<25} {df_original['SA'].mean():<20.3f} {df_generated['SA'].mean():<20.3f}")
+    print(f"{'Desv. Estándar':<25} {df_original['SA'].std():<20.3f} {df_generated['SA'].std():<20.3f}")
     
     print("\n" + "="*60)
 

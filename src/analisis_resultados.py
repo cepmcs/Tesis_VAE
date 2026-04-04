@@ -1,22 +1,19 @@
-import torch
-import torch.nn.functional as F
-import selfies as sf
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from rdkit import Chem
-from rdkit.Chem import Descriptors
-from rdkit.Chem import QED
-from rdkit.Chem import RDConfig
 import os
 import sys
+from typing import Dict, Sequence, Tuple
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+import selfies as sf
+import torch
+import torch.nn.functional as F
+from rdkit import Chem, RDLogger
+from rdkit.Chem import Descriptors, QED, RDConfig
 
 # Agregar la ruta de contribuciones de RDKit para SA_Score
 sys.path.append(os.path.join(RDConfig.RDContribDir, 'SA_Score'))
-import sascorer
-
-from rdkit import RDLogger
+import sascorer  # pyright: ignore[reportMissingImports]
 
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -36,15 +33,29 @@ MAX_LEN = 100
 TEMP = 1.0
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 OUTPUT_PLOT = os.path.join(ROOT_DIR, "outputs", "comparacion_propiedades.png")
+SOURCE_ORIGINAL = "MOSES (Original)"
+SOURCE_GENERATED = "Generadas (VAE)"
+PLOT_COLORS = {SOURCE_ORIGINAL: "#2E86AB", SOURCE_GENERATED: "#E94F37"}
+
+PLOT_CONFIG: Sequence[Tuple[str, str, str]] = (
+    ("LogP", "LogP", "Distribución de LogP"),
+    ("MW", "Peso Molecular (Da)", "Distribución de Peso Molecular"),
+    ("QED", "QED", "Distribución de QED"),
+    ("SA", "SA Score", "Accesibilidad Sintética (SA)"),
+)
+
+STATS_CONFIG: Dict[str, Sequence[Tuple[str, str]]] = {
+    "LogP": (("Media", "mean"), ("Desv. Estándar", "std"), ("Mínimo", "min"), ("Máximo", "max")),
+    "MW": (("Media", "mean"), ("Desv. Estándar", "std"), ("Mínimo", "min"), ("Máximo", "max")),
+    "QED": (("Media", "mean"), ("Desv. Estándar", "std")),
+    "SA": (("Media", "mean"), ("Desv. Estándar", "std")),
+}
 
 
 def load_model_and_vocab():
     """Carga el modelo VAE entrenado y los vocabularios."""
-    if not torch.cuda.is_available():
-        checkpoint = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
-    else:
-        checkpoint = torch.load(MODEL_PATH)
-        
+    checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
+
     vocab_stoi = checkpoint['vocab_stoi']
     vocab_itos = checkpoint['vocab_itos']
     hyper = checkpoint['hyperparams']
@@ -62,8 +73,11 @@ def load_model_and_vocab():
     return model, vocab_stoi, vocab_itos, hyper['latent']
 
 
-def decode_latent(model, z, vocab_stoi, vocab_itos, max_len=100, temp=1.0):
+def decode_latent(model, z, vocab_stoi, max_len=100, temp=1.0):
     """Decodifica vectores latentes a secuencias de índices."""
+    if temp <= 0:
+        raise ValueError("La temperatura de decodificación debe ser mayor a 0.")
+
     batch_size = z.size(0)
     h = model.decoder_input(z).unsqueeze(0)
     
@@ -120,7 +134,7 @@ def indices_to_smiles(indices_tensor, vocab_itos):
         try:
             sm = sf.decoder(selfies_str)
             smiles_list.append(sm)
-        except:
+        except Exception:
             smiles_list.append(None)
             
     return smiles_list
@@ -136,7 +150,7 @@ def generate_molecules(model, vocab_stoi, vocab_itos, latent_dim, num_molecules,
     for i in range(num_batches):
         current_batch = min(batch_size, num_molecules - i * batch_size)
         z = torch.randn(current_batch, latent_dim).to(DEVICE)
-        indices = decode_latent(model, z, vocab_stoi, vocab_itos, MAX_LEN, TEMP)
+        indices = decode_latent(model, z, vocab_stoi, MAX_LEN, TEMP)
         smiles = indices_to_smiles(indices, vocab_itos)
         all_smiles.extend(smiles)
         
@@ -151,47 +165,40 @@ def calculate_properties(smiles_list, source_name=""):
     Calcula Peso Molecular (MW), LogP, QED y SA para una lista de SMILES.
     Retorna un DataFrame con las propiedades.
     """
-    mw_list = []
-    logp_list = []
-    qed_list = []
-    sa_list = []
-    valid_smiles = []
-    
+    records = []
+
     for sm in smiles_list:
         if sm is None:
             continue
         mol = Chem.MolFromSmiles(sm)
         if mol is not None:
             try:
-                mw = Descriptors.MolWt(mol)
-                logp = Descriptors.MolLogP(mol)
-                qed_val = QED.qed(mol)
-                sa_val = sascorer.calculateScore(mol)
-                
-                mw_list.append(mw)
-                logp_list.append(logp)
-                qed_list.append(qed_val)
-                sa_list.append(sa_val)
-                valid_smiles.append(sm)
-            except:
+                records.append(
+                    {
+                        'SMILES': sm,
+                        'MW': Descriptors.MolWt(mol),
+                        'LogP': Descriptors.MolLogP(mol),
+                        'QED': QED.qed(mol),
+                        'SA': sascorer.calculateScore(mol),
+                        'Source': source_name,
+                    }
+                )
+            except Exception:
                 continue
-    
-    df = pd.DataFrame({
-        'SMILES': valid_smiles,
-        'MW': mw_list,
-        'LogP': logp_list,
-        'QED': qed_list,
-        'SA': sa_list,
-        'Source': source_name
-    })
-    
-    return df
+
+    return pd.DataFrame(records)
 
 
 def load_moses_dataset(path, sample_size=None):
     """Carga el dataset MOSES y extrae SMILES."""
     print(f"Cargando dataset MOSES desde {path}...")
     df = pd.read_csv(path)
+
+    required_cols = {'SMILES', 'SPLIT'}
+    missing_cols = required_cols - set(df.columns)
+    if missing_cols:
+        missing = ', '.join(sorted(missing_cols))
+        raise ValueError(f"Faltan columnas requeridas en MOSES: {missing}")
     
     # MOSES usa la columna "SMILES" y "SPLIT". Filtrar por train
     df_train = df[df['SPLIT'] == 'train'].copy()
@@ -206,116 +213,73 @@ def load_moses_dataset(path, sample_size=None):
     return df_train['SMILES'].tolist()
 
 
+def _plot_property_distribution(ax, df_combined, df_original, df_generated, prop, xlabel, title):
+    """Grafica la distribución KDE de una propiedad para ambos conjuntos."""
+    for source in (SOURCE_ORIGINAL, SOURCE_GENERATED):
+        data = df_combined[df_combined['Source'] == source][prop]
+        sns.kdeplot(
+            data=data,
+            ax=ax,
+            label=source,
+            color=PLOT_COLORS[source],
+            linewidth=2,
+            fill=True,
+            alpha=0.3,
+        )
+
+    ax.axvline(
+        x=df_original[prop].mean(),
+        color=PLOT_COLORS[SOURCE_ORIGINAL],
+        linestyle='--',
+        alpha=0.7,
+    )
+    ax.axvline(
+        x=df_generated[prop].mean(),
+        color=PLOT_COLORS[SOURCE_GENERATED],
+        linestyle='--',
+        alpha=0.7,
+    )
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel('Densidad', fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10)
+
+
 def plot_comparison(df_original, df_generated, output_path):
     """Genera gráficos KDE comparativos de MW, LogP, QED y SA."""
-    
+
     # Combinar dataframes
     df_combined = pd.concat([df_original, df_generated], ignore_index=True)
-    
+
     # Configurar estilo
     sns.set_style("whitegrid")
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    
-    # Colores
-    colors = {'MOSES (Original)': '#2E86AB', 'Generadas (VAE)': '#E94F37'}
-    
-    # --- Gráfico 1: Distribución de LogP ---
-    ax1 = axes[0, 0]
-    for source in ['MOSES (Original)', 'Generadas (VAE)']:
-        data = df_combined[df_combined['Source'] == source]['LogP']
-        sns.kdeplot(
-            data=data,
-            ax=ax1,
-            label=source,
-            color=colors[source],
-            linewidth=2,
-            fill=True,
-            alpha=0.3
-        )
-    
-    ax1.set_xlabel('LogP', fontsize=12)
-    ax1.set_ylabel('Densidad', fontsize=12)
-    ax1.set_title('Distribución de LogP', fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=10)
-    ax1.axvline(x=df_original['LogP'].mean(), color=colors['MOSES (Original)'], 
-                linestyle='--', alpha=0.7, label=f"Media Original: {df_original['LogP'].mean():.2f}")
-    ax1.axvline(x=df_generated['LogP'].mean(), color=colors['Generadas (VAE)'], 
-                linestyle='--', alpha=0.7, label=f"Media Generadas: {df_generated['LogP'].mean():.2f}")
-    
-    # --- Gráfico 2: Distribución de Peso Molecular ---
-    ax2 = axes[0, 1]
-    for source in ['MOSES (Original)', 'Generadas (VAE)']:
-        data = df_combined[df_combined['Source'] == source]['MW']
-        sns.kdeplot(
-            data=data,
-            ax=ax2,
-            label=source,
-            color=colors[source],
-            linewidth=2,
-            fill=True,
-            alpha=0.3
-        )
-    
-    ax2.set_xlabel('Peso Molecular (Da)', fontsize=12)
-    ax2.set_ylabel('Densidad', fontsize=12)
-    ax2.set_title('Distribución de Peso Molecular', fontsize=14, fontweight='bold')
-    ax2.legend(fontsize=10)
-    ax2.axvline(x=df_original['MW'].mean(), color=colors['MOSES (Original)'], 
-                linestyle='--', alpha=0.7)
-    ax2.axvline(x=df_generated['MW'].mean(), color=colors['Generadas (VAE)'], 
-                linestyle='--', alpha=0.7)
 
-    # --- Gráfico 3: Distribución de QED ---
-    ax3 = axes[1, 0]
-    for source in ['MOSES (Original)', 'Generadas (VAE)']:
-        data = df_combined[df_combined['Source'] == source]['QED']
-        sns.kdeplot(
-            data=data,
-            ax=ax3,
-            label=source,
-            color=colors[source],
-            linewidth=2,
-            fill=True,
-            alpha=0.3
+    for ax, (prop, xlabel, title) in zip(axes.flatten(), PLOT_CONFIG):
+        _plot_property_distribution(
+            ax=ax,
+            df_combined=df_combined,
+            df_original=df_original,
+            df_generated=df_generated,
+            prop=prop,
+            xlabel=xlabel,
+            title=title,
         )
-    
-    ax3.set_xlabel('QED', fontsize=12)
-    ax3.set_ylabel('Densidad', fontsize=12)
-    ax3.set_title('Distribución de QED', fontsize=14, fontweight='bold')
-    ax3.legend(fontsize=10)
-    ax3.axvline(x=df_original['QED'].mean(), color=colors['MOSES (Original)'], 
-                linestyle='--', alpha=0.7)
-    ax3.axvline(x=df_generated['QED'].mean(), color=colors['Generadas (VAE)'], 
-                linestyle='--', alpha=0.7)
 
-    # --- Gráfico 4: Distribución de SA (Synthetic Accessibility) ---
-    ax4 = axes[1, 1]
-    for source in ['MOSES (Original)', 'Generadas (VAE)']:
-        data = df_combined[df_combined['Source'] == source]['SA']
-        sns.kdeplot(
-            data=data,
-            ax=ax4,
-            label=source,
-            color=colors[source],
-            linewidth=2,
-            fill=True,
-            alpha=0.3
-        )
-    
-    ax4.set_xlabel('SA Score', fontsize=12)
-    ax4.set_ylabel('Densidad', fontsize=12)
-    ax4.set_title('Accesibilidad Sintética (SA)', fontsize=14, fontweight='bold')
-    ax4.legend(fontsize=10)
-    ax4.axvline(x=df_original['SA'].mean(), color=colors['MOSES (Original)'], 
-                linestyle='--', alpha=0.7)
-    ax4.axvline(x=df_generated['SA'].mean(), color=colors['Generadas (VAE)'], 
-                linestyle='--', alpha=0.7)
-    
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
-    
+
     print(f"\nGráfico guardado en: {output_path}")
+
+
+def _print_metric_statistics(df_original, df_generated, metric_name, title):
+    """Imprime estadísticas configuradas para una métrica."""
+    print(f"\n--- {title} ---")
+    for label, method_name in STATS_CONFIG[metric_name]:
+        original_value = getattr(df_original[metric_name], method_name)()
+        generated_value = getattr(df_generated[metric_name], method_name)()
+        print(f"{label:<25} {original_value:<20.3f} {generated_value:<20.3f}")
 
 
 def print_statistics(df_original, df_generated):
@@ -326,34 +290,19 @@ def print_statistics(df_original, df_generated):
     
     print(f"\n{'Métrica':<25} {'MOSES':<20} {'Generadas':<20}")
     print("-"*65)
-    
+
     # Número de moléculas válidas
     print(f"{'Moléculas válidas':<25} {len(df_original):<20} {len(df_generated):<20}")
-    
-    # LogP
-    print(f"\n--- LogP ---")
-    print(f"{'Media':<25} {df_original['LogP'].mean():<20.3f} {df_generated['LogP'].mean():<20.3f}")
-    print(f"{'Desv. Estándar':<25} {df_original['LogP'].std():<20.3f} {df_generated['LogP'].std():<20.3f}")
-    print(f"{'Mínimo':<25} {df_original['LogP'].min():<20.3f} {df_generated['LogP'].min():<20.3f}")
-    print(f"{'Máximo':<25} {df_original['LogP'].max():<20.3f} {df_generated['LogP'].max():<20.3f}")
-    
-    # MW
-    print(f"\n--- Peso Molecular (Da) ---")
-    print(f"{'Media':<25} {df_original['MW'].mean():<20.3f} {df_generated['MW'].mean():<20.3f}")
-    print(f"{'Desv. Estándar':<25} {df_original['MW'].std():<20.3f} {df_generated['MW'].std():<20.3f}")
-    print(f"{'Mínimo':<25} {df_original['MW'].min():<20.3f} {df_generated['MW'].min():<20.3f}")
-    print(f"{'Máximo':<25} {df_original['MW'].max():<20.3f} {df_generated['MW'].max():<20.3f}")
 
-    # QED
-    print(f"\n--- QED (Drug-likeness) ---")
-    print(f"{'Media':<25} {df_original['QED'].mean():<20.3f} {df_generated['QED'].mean():<20.3f}")
-    print(f"{'Desv. Estándar':<25} {df_original['QED'].std():<20.3f} {df_generated['QED'].std():<20.3f}")
-    
-    # SA
-    print(f"\n--- SA Score (Synthetic Accessibility) ---")
-    print(f"{'Media':<25} {df_original['SA'].mean():<20.3f} {df_generated['SA'].mean():<20.3f}")
-    print(f"{'Desv. Estándar':<25} {df_original['SA'].std():<20.3f} {df_generated['SA'].std():<20.3f}")
-    
+    metric_titles = {
+        'LogP': 'LogP',
+        'MW': 'Peso Molecular (Da)',
+        'QED': 'QED (Drug-likeness)',
+        'SA': 'SA Score (Synthetic Accessibility)',
+    }
+    for metric_name, title in metric_titles.items():
+        _print_metric_statistics(df_original, df_generated, metric_name, title)
+
     print("\n" + "="*60)
 
 
@@ -378,11 +327,11 @@ def main():
     # 4. Calcular propiedades
     print(f"\n[4/5] Calculando propiedades moleculares...")
     print("  Procesando moléculas originales...")
-    df_original = calculate_properties(original_smiles, source_name='MOSES (Original)')
+    df_original = calculate_properties(original_smiles, source_name=SOURCE_ORIGINAL)
     print(f"    -> {len(df_original)} moléculas válidas")
-    
+
     print("  Procesando moléculas generadas...")
-    df_generated = calculate_properties(generated_smiles, source_name='Generadas (VAE)')
+    df_generated = calculate_properties(generated_smiles, source_name=SOURCE_GENERATED)
     print(f"    -> {len(df_generated)} moléculas válidas")
     
     # Calcular tasa de validez

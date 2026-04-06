@@ -5,7 +5,6 @@ from typing import Dict, Sequence, Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import selfies as sf
 import torch
 import torch.nn.functional as F
 from rdkit import Chem, RDLogger
@@ -114,7 +113,7 @@ def decode_latent(model, z, vocab_stoi, max_len=100, temp=1.0):
 
 
 def indices_to_smiles(indices_tensor, vocab_itos):
-    """Convierte secuencias de índices a SMILES usando SELFIES."""
+    """Convierte secuencias de índices directamente a SMILES."""
     smiles_list = []
     indices_cpu = indices_tensor.cpu().numpy()
     special_tokens = {'[PAD]', '[SOS]', '[EOS]', '[UNK]'}
@@ -130,12 +129,9 @@ def indices_to_smiles(indices_tensor, vocab_itos):
             if token not in special_tokens:
                 tokens.append(token)
         
-        selfies_str = "".join(tokens)
-        try:
-            sm = sf.decoder(selfies_str)
-            smiles_list.append(sm)
-        except Exception:
-            smiles_list.append(None)
+        # Unir tokens como texto SMILES normal
+        smiles_str = "".join(tokens)
+        smiles_list.append(smiles_str)
             
     return smiles_list
 

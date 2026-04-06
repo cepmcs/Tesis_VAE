@@ -1,5 +1,5 @@
+import re
 import pandas as pd
-import selfies as sf
 import torch
 from tqdm import tqdm
 import os
@@ -33,21 +33,31 @@ def get_data():
     
     return df_train['SMILES'].tolist()
 
+# Expresión regular estándar para separar tokens de SMILES
+SMILES_REGEX = re.compile(r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|<|\*|\$|\%[0-9]{2}|[0-9])")
+
+def tokenize_smiles(smiles):
+    """Tokeniza un string SMILES usando la expresión regular."""
+    return [token for token in SMILES_REGEX.findall(smiles)]
+
 def process_data(smiles_list):
     print(f"Procesando {len(smiles_list)} moléculas...")
-    selfies_list = []
+    filtered_smiles = []
+    tokenized_smiles = []
     
-    # 1. SMILES -> SELFIES
-    for sm in tqdm(smiles_list, desc="Convirtiendo a SELFIES"):
-        try:
-            sel = sf.encoder(sm)
-            if sel and len(list(sf.split_selfies(sel))) < MAX_LEN:
-                selfies_list.append(sel)
-        except:
-            continue
+    # 1. Filtrar por longitud y tokenizar
+    for sm in tqdm(smiles_list, desc="Filtrando y tokenizando SMILES"):
+        tokens = tokenize_smiles(sm)
+        # +2 porque consideraremos SOS y EOS más adelante
+        if len(tokens) + 2 <= MAX_LEN: 
+            filtered_smiles.append(sm)
+            tokenized_smiles.append(tokens)
 
-    # 2. Vocabulario
-    alphabet = sf.get_alphabet_from_selfies(selfies_list)
+    # 2. Construir Vocabulario
+    alphabet = set()
+    for tokens in tokenized_smiles:
+        alphabet.update(tokens)
+        
     alphabet.add('[PAD]')
     alphabet.add('[UNK]')
     alphabet.add('[SOS]')
@@ -63,24 +73,23 @@ def process_data(smiles_list):
     
     print(f"Vocabulario: {len(vocab)} tokens")
 
-    # 3. Tokenizar con SOS y EOS
+    # 3. Convertir a índices con SOS y EOS
     sos_idx = char_to_idx['[SOS]']
     eos_idx = char_to_idx['[EOS]']
     pad_idx = char_to_idx['[PAD]']
+    unk_idx = char_to_idx['[UNK]']
     
     data_indices = []
-    for s in tqdm(selfies_list, desc="Tokenizando"):
-        tokens = list(sf.split_selfies(s))
-        indices = [char_to_idx.get(t, char_to_idx['[UNK]']) for t in tokens]
+    for tokens in tqdm(tokenized_smiles, desc="Convirtiendo a índices"):
+        indices = [char_to_idx.get(t, unk_idx) for t in tokens]
         
         # Añadir SOS al inicio y EOS al final
         indices = [sos_idx] + indices + [eos_idx]
         
-        # Padding o truncado (MAX_LEN incluye SOS y EOS)
+        # Padding
         if len(indices) < MAX_LEN:
             indices += [pad_idx] * (MAX_LEN - len(indices))
-        else:
-            indices = indices[:MAX_LEN-1] + [eos_idx]  # Asegurar EOS al final
+            
         data_indices.append(indices)
 
     return torch.tensor(data_indices, dtype=torch.long), char_to_idx, idx_to_char

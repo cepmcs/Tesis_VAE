@@ -7,7 +7,7 @@ from vae_model import MolecularVAE, vae_loss_function
 from plot_utils import plot_training 
 import os
 import sys
-
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

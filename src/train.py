@@ -19,7 +19,7 @@ LEARNING_RATE = 1e-3  # Tasa de aprendizaje
 LATENT_DIM = 128      
 HIDDEN_DIM = 128      
 EMBED_DIM = 128       
-KL_START = 0 
+KL_START = 0.3 
 KL_END = 0.3      
 KL_ANNEAL_EPOCHS = 33  # Número de epochs para hacer annealing
 

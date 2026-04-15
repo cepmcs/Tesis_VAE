@@ -7,21 +7,21 @@ from vae_model import MolecularVAE, vae_loss_function
 from plot_utils import plot_training 
 import os
 import sys
-
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # --- config ---
 BATCH_SIZE = 128       # Tamaño del batch
-EPOCHS = 20           # Número total de epochs
+EPOCHS = 100           # Número total de epochs
 LEARNING_RATE = 1e-3  # Tasa de aprendizaje
 LATENT_DIM = 128      
 HIDDEN_DIM = 128      
 EMBED_DIM = 128       
-KL_START = 0 
+KL_START = 0.3 
 KL_END = 0.3      
-KL_ANNEAL_EPOCHS = 8  # Número de epochs para hacer annealing
+KL_ANNEAL_EPOCHS = -1  # Número de epochs para hacer annealing
 
 # Paths y dispositivo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

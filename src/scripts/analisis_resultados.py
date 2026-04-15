@@ -1,7 +1,6 @@
 import os
 import sys
 from typing import Dict, Sequence, Tuple
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -14,9 +13,9 @@ from rdkit.Chem import Descriptors, QED, RDConfig
 sys.path.append(os.path.join(RDConfig.RDContribDir, 'SA_Score'))
 import sascorer  # pyright: ignore[reportMissingImports]
 
-# Directorio raíz del proyecto (un nivel arriba de src/)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Directorio raíz del proyecto (dos niveles arriba de src/scripts/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importar arquitectura del VAE
 from vae_model import MolecularVAE

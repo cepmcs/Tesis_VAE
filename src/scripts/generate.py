@@ -6,9 +6,9 @@ from rdkit import RDLogger
 import os
 import sys
 
-# Directorio raíz del proyecto (un nivel arriba de src/)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Directorio raíz del proyecto (dos niveles arriba de src/scripts/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importar tu arquitectura definida en vae_model.py
 from vae_model import MolecularVAE

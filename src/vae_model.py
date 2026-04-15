@@ -3,18 +3,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class MolecularVAE(nn.Module):
-    def __init__(self, vocab_size, embed_size=128, hidden_size=128, latent_size=128):
+    def __init__(self, vocab_size, embed_size=128, hidden_size=128, latent_size=128, num_layers=1):
         super(MolecularVAE, self).__init__()
+        self.num_layers = num_layers
         
         # --- 1. ENCODER ---
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=0)
-        self.encoder_rnn = nn.GRU(embed_size, hidden_size, batch_first=True)
+        self.encoder_rnn = nn.GRU(embed_size, hidden_size, num_layers=num_layers, batch_first=True)
         self.fc_mu = nn.Linear(hidden_size, latent_size)       # Media μ
         self.fc_logvar = nn.Linear(hidden_size, latent_size)   # Log-varianza σ²
         
         # --- 2. DECODER ---
         self.decoder_input = nn.Linear(latent_size, hidden_size)  # z → h₀ del decoder
-        self.decoder_rnn = nn.GRU(embed_size, hidden_size, batch_first=True)
+        self.decoder_rnn = nn.GRU(embed_size, hidden_size, num_layers=num_layers, batch_first=True)
         self.fc_out = nn.Linear(hidden_size, vocab_size)          # Logits sobre vocabulario
         
     def reparameterize(self, mu, logvar):
@@ -31,8 +32,8 @@ class MolecularVAE(nn.Module):
         
         # --- ENCODING ---
         embed = self.embedding(x)
-        _, h = self.encoder_rnn(embed)
-        h = h.squeeze(0) 
+        _, hidden = self.encoder_rnn(embed)
+        h = hidden[-1]  # Tomamos el estado oculto de la última capa
         
         mu = self.fc_mu(h)
         logvar = self.fc_logvar(h)
@@ -41,7 +42,8 @@ class MolecularVAE(nn.Module):
         # --- DECODING (Teacher Forcing) ---
         # Input del decoder: x[:, :-1] = [SOS, t1, ..., tn-1]
         # Target esperado:   x[:, 1:]  = [t1, t2, ..., EOS, PAD...]
-        h_decoder = self.decoder_input(z).unsqueeze(0)    # Estado inicial h₀
+        # Repetimos h_0 para cada capa del decoder
+        h_decoder = self.decoder_input(z).unsqueeze(0).repeat(self.num_layers, 1, 1)
         embed_decoder = self.embedding(x[:, :-1])          # Embeddings shifted
         out, _ = self.decoder_rnn(embed_decoder, h_decoder)
         prediction = self.fc_out(out)  # [batch, seq_len-1, vocab_size]

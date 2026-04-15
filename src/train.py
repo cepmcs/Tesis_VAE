@@ -4,30 +4,40 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 from vae_model import MolecularVAE, vae_loss_function
-from plot_utils import plot_training 
 import os
 import sys
+import argparse
+import csv
+
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# --- config ---
-BATCH_SIZE = 128       # Tamaño del batch
-EPOCHS = 100           # Número total de epochs
-LEARNING_RATE = 1e-3  # Tasa de aprendizaje
-LATENT_DIM = 256      
+# --- config Argparse ---
+parser = argparse.ArgumentParser(description="Entrenamiento de VAE")
+parser.add_argument('--latent_dim', type=int, required=True, help="Dimensión latente a usar")
+parser.add_argument('--epochs', type=int, required=True, help="Número de épocas del experimento")
+parser.add_argument('--data_path', type=str, required=True, help="Ruta del dataset")
+parser.add_argument('--exp_name', type=str, required=True, help="Nombre único para guardar el modelo")
+parser.add_argument('--num_layers', type=int, default=1, help="Cantidad de capas GRU")
+args = parser.parse_args()
+
+# --- Configuración global ---
+BATCH_SIZE = 128
+EPOCHS = args.epochs
+LEARNING_RATE = 1e-3
+LATENT_DIM = args.latent_dim      
 HIDDEN_DIM = LATENT_DIM
 EMBED_DIM = 128       
 KL_START = 0
 KL_END = 0.3      
-KL_ANNEAL_EPOCHS = int(EPOCHS * 0.25)  # Número de epochs para hacer annealing
+KL_ANNEAL_EPOCHS = int(EPOCHS * 0.25)
 
-# Paths y dispositivo
+# Paths dinámicos
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DATA_PATH = os.path.join(ROOT_DIR, "data", "moses_processed.pt")
-MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
-PLOT_FILE = os.path.join(ROOT_DIR, "outputs", "training_loss.png")
+DATA_PATH = os.path.join(ROOT_DIR, args.data_path)
+MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", f"{args.exp_name}.pth")
 
 # --- Función de Entrenamiento ---
 def train():
@@ -62,7 +72,13 @@ def train():
     print(f"Train: {train_size} | Validación: {val_size}")
 
     # 2. Inicializar Modelo 
-    model = MolecularVAE(vocab_size, EMBED_DIM, HIDDEN_DIM, LATENT_DIM).to(DEVICE)
+    model = MolecularVAE(
+        vocab_size, 
+        EMBED_DIM, 
+        HIDDEN_DIM, 
+        LATENT_DIM,
+        num_layers=args.num_layers
+    ).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     # Listas para guardar historial de loss y accuracy
@@ -177,7 +193,7 @@ def train():
         print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%")
         print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%")
 
-    # 4. Guardar modelo entrenado
+    # 4. Guardar modelo entrenado (Última época)
     print("Guardando modelo...")
     torch.save({
         'model_state': model.state_dict(),
@@ -187,14 +203,38 @@ def train():
             'embed': EMBED_DIM, 
             'hidden': HIDDEN_DIM, 
             'latent': LATENT_DIM,
-            'vocab_size': vocab_size
+            'vocab_size': vocab_size,
+            'num_layers': args.num_layers
         },
-        'history': history
+        'history': history,
+        'epoch': EPOCHS
     }, MODEL_SAVE_PATH)
     print(f"Modelo guardado en {MODEL_SAVE_PATH}")
 
-    # 5. Generar Gráfica Automática de Entrenamiento
-    plot_training(history, PLOT_FILE)
+    # 5. Guardar resultados en CSV global (Reemplaza a la gráfica)
+    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase1_resultados.csv")
+    file_exists = os.path.isfile(RESULTS_CSV)
+    
+    final_train_loss = history['train_loss'][-1]
+    final_val_loss = history['val_loss'][-1]
+    
+    with open(RESULTS_CSV, mode='a', newline='') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss'])
+        
+        writer.writerow([
+            args.exp_name,
+            args.data_path,
+            'GRU', # Fijo para estos experimentos
+            args.num_layers,
+            LATENT_DIM, 
+            EPOCHS,
+            final_train_loss, 
+            final_val_loss
+        ])
+        
+    print(f"Resultados de la última época guardados en {RESULTS_CSV}")
 
 if __name__ == "__main__":
     train()

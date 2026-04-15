@@ -21,7 +21,7 @@ HIDDEN_DIM = 128
 EMBED_DIM = 128       
 KL_START = 0.3 
 KL_END = 0.3      
-KL_ANNEAL_EPOCHS = 33  # Número de epochs para hacer annealing
+KL_ANNEAL_EPOCHS = -1  # Número de epochs para hacer annealing
 
 # Paths y dispositivo
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")

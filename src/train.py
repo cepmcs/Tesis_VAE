@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # --- config ---
 BATCH_SIZE = 128       # Tamaño del batch
 EPOCHS = 100           # Número total de epochs
-LEARNING_RATE = 1e-3  # Tasa de aprendizaje
+LEARNING_RATE = 1e-4  # Tasa de aprendizaje
 LATENT_DIM = 128      
 HIDDEN_DIM = 128      
 EMBED_DIM = 128       

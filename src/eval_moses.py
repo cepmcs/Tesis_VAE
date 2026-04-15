@@ -6,7 +6,6 @@ Ejecutar en el entorno moses_fork:
 import argparse
 import json
 import os
-import sys
 import moses
 import moses.metrics.metrics as metrics_module
 import numpy as np

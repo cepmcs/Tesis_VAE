@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import selfies as sf
 from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
@@ -93,7 +92,7 @@ def decode_latent(model, z, vocab_stoi, vocab_itos, max_len=100, temp=1.0):
     return decoded_indices
 
 def indices_to_smiles(indices_tensor, vocab_itos):
-    # Convertir secuencias de índices a cadenas SMILES usando SELFIES
+    # Convertir secuencias de índices directamente a SMILES
     smiles_list = []
     indices_cpu = indices_tensor.cpu().numpy()
     
@@ -111,12 +110,9 @@ def indices_to_smiles(indices_tensor, vocab_itos):
             if token not in special_tokens:
                 tokens.append(token)
         
-        selfies_str = "".join(tokens)
-        try:
-            sm = sf.decoder(selfies_str)
-            smiles_list.append(sm)
-        except:
-            smiles_list.append(None)
+        # Unir tokens como texto SMILES normal
+        smiles_str = "".join(tokens)
+        smiles_list.append(smiles_str)
             
     return smiles_list
 
@@ -158,11 +154,12 @@ def main():
 
     print(f"\nTotal válidas: {len(valid_smiles)} / {NUM_MOLECULES}")
 
-    # 4. GUARDAR SMILES PARA MOSES (1 por línea)
+    # 4. GUARDAR TODAS LAS SMILES PARA EVALUAR CON MOSES (1 por línea)
     with open(OUTPUT_SMILES, "w") as f:
-        for sm in valid_smiles:
-            f.write(sm + "\n")
-    print(f"SMILES guardadas en: {OUTPUT_SMILES}")
+        for sm in all_smiles:
+            if sm.strip():
+                f.write(sm.strip() + "\n")
+    print(f"Todas las SMILES generadas ({len(all_smiles)}) fueron guardadas en: {OUTPUT_SMILES}")
 
     # 5. GENERAR IMAGEN CON RDKIT (primeras 50)
     if valid_mols:

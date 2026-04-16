@@ -219,6 +219,8 @@ def train():
     
     final_train_loss = history['train_loss'][-1]
     final_val_loss = history['val_loss'][-1]
+    final_train_acc = history['train_accuracy'][-1]
+    final_val_acc = history['val_accuracy'][-1]
     
     end_time = time.time()
     training_time_minutes = (end_time - start_time) / 60.0
@@ -226,7 +228,7 @@ def train():
     with open(RESULTS_CSV, mode='a', newline='') as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss', 'Time(min)'])
+            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss', 'Final_Train_Acc', 'Final_Val_Acc', 'Time(min)'])
         
         writer.writerow([
             args.exp_name,
@@ -237,6 +239,8 @@ def train():
             EPOCHS,
             final_train_loss, 
             final_val_loss,
+            round(final_train_acc, 2),
+            round(final_val_acc, 2),
             round(training_time_minutes, 2)
         ])
         

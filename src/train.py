@@ -8,6 +8,7 @@ import os
 import sys
 import argparse
 import csv
+import time
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 # Directorio raíz del proyecto (un nivel arriba de src/)
@@ -41,6 +42,7 @@ MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", f"{args.exp_name}.pth")
 
 # --- Función de Entrenamiento ---
 def train():
+    start_time = time.time()
     print(f"--- Iniciando entrenamiento  en: {DEVICE} ---")
     
     # 1. Cargar Datos
@@ -218,10 +220,13 @@ def train():
     final_train_loss = history['train_loss'][-1]
     final_val_loss = history['val_loss'][-1]
     
+    end_time = time.time()
+    training_time_minutes = (end_time - start_time) / 60.0
+    
     with open(RESULTS_CSV, mode='a', newline='') as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss'])
+            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss', 'Time(min)'])
         
         writer.writerow([
             args.exp_name,
@@ -231,7 +236,8 @@ def train():
             LATENT_DIM, 
             EPOCHS,
             final_train_loss, 
-            final_val_loss
+            final_val_loss,
+            round(training_time_minutes, 2)
         ])
         
     print(f"Resultados de la última época guardados en {RESULTS_CSV}")

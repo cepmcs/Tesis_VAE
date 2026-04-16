@@ -45,6 +45,11 @@ def train():
     start_time = time.time()
     print(f"--- Iniciando entrenamiento  en: {DEVICE} ---")
     
+    if LATENT_DIM >= 256:
+        max_clip = 1.0
+    else:
+        max_clip = 5.0
+    
     # 1. Cargar Datos
     if not os.path.exists(DATA_PATH):
         print(f"No se encuentra {DATA_PATH}")
@@ -119,7 +124,7 @@ def train():
             # Backward 
             optimizer.zero_grad()
             loss.backward()
-            clip_grad_norm_(model.parameters(), 5.0) # Clipping de gradiente
+            clip_grad_norm_(model.parameters(), max_clip) # Clipping de gradiente ajustado
             optimizer.step()
             
             # Acumular Loss 

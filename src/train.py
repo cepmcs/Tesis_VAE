@@ -2,7 +2,6 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.nn.utils import clip_grad_norm_
-from tqdm import tqdm
 from vae_model import MolecularVAE, vae_loss_function
 import os
 import sys
@@ -110,9 +109,9 @@ def train():
         correct_tokens = 0
         total_tokens = 0
         
-        progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} [TRAIN]")
+        print(f"Epoch {epoch+1}/{EPOCHS} [TRAIN] - KL Weight: {kl_weight:.4f}")
         
-        for batch in progress:
+        for batch in train_loader:
             x = batch[0].to(DEVICE)
             
             # Forward 
@@ -144,12 +143,6 @@ def train():
             
             correct_tokens += matches.sum().item()
             total_tokens += batch_tokens
-            
-            # Actualizar barra
-            progress.set_postfix({
-                'Loss/token': loss.item() / batch_tokens,
-                'KL': f"{kl_weight:.4f}"
-            })
 
         # Estadísticas del Epoch de Train
         train_avg_loss = epoch_loss / total_tokens

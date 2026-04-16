@@ -110,7 +110,7 @@ def train():
         correct_tokens = 0
         total_tokens = 0
         
-        progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} [TRAIN]")
+        progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{EPOCHS} [TRAIN]", mininterval=300)
         
         for batch in progress:
             x = batch[0].to(DEVICE)

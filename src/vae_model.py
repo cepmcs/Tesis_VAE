@@ -21,8 +21,6 @@ class MolecularVAE(nn.Module):
     def reparameterize(self, mu, logvar):
         """Truco de reparametrización: z = μ + σ * ε, con ε ~ N(0, I)."""
         if self.training:
-            # Prevención de overflow por gradientes explosivos comunes en VAEs
-            logvar = torch.clamp(logvar, min=-20, max=20)
             std = torch.exp(0.5 * logvar)
             eps = torch.randn_like(std)
             return mu + eps * std
@@ -39,6 +37,11 @@ class MolecularVAE(nn.Module):
         
         mu = self.fc_mu(h)
         logvar = self.fc_logvar(h)
+        
+        # Prevención de overflow que produce Inf/NaN y corrompe CuDNN
+        logvar = torch.clamp(logvar, min=-20, max=20)
+        mu = torch.clamp(mu, min=-20, max=20)
+        
         z = self.reparameterize(mu, logvar)
         
         # --- DECODING (Teacher Forcing) ---

@@ -12,7 +12,7 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DATA_URL = "https://media.githubusercontent.com/media/molecularsets/moses/master/data/dataset_v1.csv"
 FILENAME = os.path.join(ROOT_DIR, "data", "moses.csv")
 PROCESSED_FILE = os.path.join(ROOT_DIR, "data", "mosesSELFIES_processed.pt")
-MAX_LEN = 60
+MAX_LEN = 65
 
 def get_data():
     if not os.path.exists(FILENAME):

@@ -1,16 +1,17 @@
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 from vae_model import MolecularVAE, vae_loss_function
-import os
 import sys
 import argparse
 import csv
 import time
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+
 # Directorio raíz del proyecto (un nivel arriba de src/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

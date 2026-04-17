@@ -17,7 +17,7 @@ from vae_model import MolecularVAE
 RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
-MODEL_PATH = os.path.join(ROOT_DIR, "models", "vae_model.pth")
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "SMILES_GRU_2_256_100.pth")  # Cambia al modelo que quieras usar
 NUM_MOLECULES = 30000   # MOSES recomienda al menos 30k
 MAX_LEN = 100          
 TEMP = 1.0             # Temperatura para muestreo
@@ -40,7 +40,8 @@ def load_model_and_vocab():
         vocab_size=hyper['vocab_size'],
         embed_size=hyper['embed'],
         hidden_size=hyper['hidden'],
-        latent_size=hyper['latent']
+        latent_size=hyper['latent'],
+        num_layers=hyper.get('num_layers', 1)
     ).to(DEVICE)
     
     model.load_state_dict(checkpoint['model_state'])
@@ -51,7 +52,7 @@ def load_model_and_vocab():
 def decode_latent(model, z, vocab_stoi, vocab_itos, max_len=100, temp=1.0):
     # Decodificar latentes a secuencias de índices
     batch_size = z.size(0)
-    h = model.decoder_input(z).unsqueeze(0)
+    h = model.decoder_input(z).unsqueeze(0).repeat(model.num_layers, 1, 1)
     
     # Empezar con el token SOS
     sos_idx = vocab_stoi['[SOS]']

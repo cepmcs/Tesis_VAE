@@ -21,6 +21,8 @@ class MolecularVAE(nn.Module):
     def reparameterize(self, mu, logvar):
         """Truco de reparametrización: z = μ + σ * ε, con ε ~ N(0, I)."""
         if self.training:
+            # Prevención de overflow por gradientes explosivos comunes en VAEs
+            logvar = torch.clamp(logvar, min=-20, max=20)
             std = torch.exp(0.5 * logvar)
             eps = torch.randn_like(std)
             return mu + eps * std

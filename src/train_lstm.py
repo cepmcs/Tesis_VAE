@@ -220,7 +220,7 @@ def train():
     print(f"Modelo guardado en {MODEL_SAVE_PATH}")
 
     # 5. Guardar resultados en CSV global (Reemplaza a la gráfica)
-    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase1_resultados.csv")
+    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase1_resultados_lstm.csv")
     file_exists = os.path.isfile(RESULTS_CSV)
     
     final_train_loss = history['train_loss'][-1]

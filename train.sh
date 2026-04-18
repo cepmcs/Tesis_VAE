@@ -16,7 +16,7 @@ source /home/cperez/miniconda3/bin/activate vae-mol
 DATA_BATERIA=("data/mosesSMILES_processed.pt" "data/mosesSELFIES_processed.pt")
 NOMBRES_BATERIA=("SMILES" "SELFIES")
 
-EPOCHS_LIST=(100 300)              
+EPOCHS_LIST=(100)              
 LATENT_DIMS=(64 128 256)
 NUM_LAYERS=(1 2)
 

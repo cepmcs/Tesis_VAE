@@ -44,7 +44,7 @@ MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", f"{args.exp_name}.pth")
 # --- Función de Entrenamiento ---
 def train():
     start_time = time.time()
-    print(f"--- Iniciando entrenamiento LSTM en: {DEVICE} ---")
+    print(f"--- Iniciando entrenamiento LSTM en: {DEVICE} ---", flush=True)
     
     if LATENT_DIM >= 256:
         max_clip = 1.0
@@ -65,8 +65,8 @@ def train():
     vocab_size = len(vocab_stoi)
     
 
-    print(f"Vocabulario: {vocab_size} tokens")
-    print(f"Muestras totales: {len(data_tensor)}")
+    print(f"Vocabulario: {vocab_size} tokens", flush=True)
+    print(f"Muestras totales: {len(data_tensor)}", flush=True)
 
     # Split 80% train / 20% validation
     dataset = TensorDataset(data_tensor)
@@ -77,7 +77,7 @@ def train():
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     
-    print(f"Train: {train_size} | Validación: {val_size}")
+    print(f"Train: {train_size} | Validación: {val_size}", flush=True)
 
     # 2. Inicializar Modelo 
     model = MolecularVAE_LSTM(
@@ -198,11 +198,11 @@ def train():
         # Volver a modo train
         model.train()
         
-        print(f"    Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%")
-        print(f"    Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%")
+        print(f"Epoch {epoch+1}/{EPOCHS} | Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%", flush=True)
+        print(f"Epoch {epoch+1}/{EPOCHS} | Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%", flush=True)
 
     # 4. Guardar modelo entrenado (Última época)
-    print("Guardando modelo...")
+    print("Guardando modelo...", flush=True)
     torch.save({
         'model_state': model.state_dict(),
         'vocab_stoi': vocab_stoi,

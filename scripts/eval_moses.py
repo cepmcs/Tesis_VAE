@@ -11,8 +11,8 @@ import moses.metrics.metrics as metrics_module
 import numpy as np
 from scipy.spatial.distance import cosine
 
-# Directorio raíz del proyecto (dos niveles arriba de src/scripts/)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Directorio raíz del proyecto (un nivel arriba de scripts/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Parche temporal para corregir el overflow de float32 en moses/scipy
 def safe_cos_distance(u, v):

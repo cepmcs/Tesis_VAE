@@ -5,8 +5,8 @@ from tqdm import tqdm
 import os
 import urllib.request
 
-# Directorio raíz del proyecto (dos niveles arriba de src/scripts/)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Directorio raíz del proyecto (un nivel arriba de scripts/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # config para MOSES
 DATA_URL = "https://media.githubusercontent.com/media/molecularsets/moses/master/data/dataset_v1.csv"

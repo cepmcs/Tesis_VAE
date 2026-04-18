@@ -5,9 +5,9 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 
-# Directorio raíz del proyecto (dos niveles arriba de src/scripts/)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Directorio raíz del proyecto (un nivel arriba de scripts/)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT_DIR, "src"))
 
 from vae_model import MolecularVAE
 

@@ -16,7 +16,7 @@ source /home/cperez/miniconda3/bin/activate vae-mol
 DATA_BATERIA=("data/mosesSMILES_processed.pt" "data/mosesSELFIES_processed.pt")
 NOMBRES_BATERIA=("SMILES" "SELFIES")
 
-EPOCHS_LIST=(100)              
+EPOCHS_LIST=(300)              
 LATENT_DIMS=(64 128 256)
 NUM_LAYERS=(1 2)
 
@@ -29,16 +29,22 @@ for idx in "${!DATA_BATERIA[@]}"; do
         for LATENT in "${LATENT_DIMS[@]}"; do
             for LAYERS in "${NUM_LAYERS[@]}"; do
                 
-                # Nombre formato: SMILES_GRU_1_64_100
+                # Nombre formato: SMILES_GRU_1_64_300
                 EXP_NAME="${REP_NAME}_GRU_${LAYERS}_${LATENT}_${EPOCH}"
                 MODEL_FILE="Tesis_VAE/models/${EXP_NAME}.pth"
+                LOCK_FILE="Tesis_VAE/models/${EXP_NAME}.lock"
                 
                 echo "======================================================"
-                # Control de reinicio: Si existe, se salta
+                # Control de reinicio: Si existe modelo o lock, se salta
                 if [ -f "$MODEL_FILE" ]; then
                     echo "El modelo $EXP_NAME ya existe. Saltando al siguiente..."
+                elif [ -f "$LOCK_FILE" ]; then
+                    echo "El modelo $EXP_NAME está siendo entrenado por otro proceso. Saltando..."
                 else
                     echo "CORRIENDO EXPERIMENTO: $EXP_NAME"
+                    
+                    # Crear lock file para evitar duplicados en paralelo
+                    touch "$LOCK_FILE"
                     
                     # Ejecutando entrenamiento
                     python Tesis_VAE/src/train.py \
@@ -47,6 +53,9 @@ for idx in "${!DATA_BATERIA[@]}"; do
                         --data_path $DATA \
                         --exp_name $EXP_NAME \
                         --num_layers $LAYERS
+                    
+                    # Eliminar lock al terminar
+                    rm -f "$LOCK_FILE"
                 fi
                 
             done

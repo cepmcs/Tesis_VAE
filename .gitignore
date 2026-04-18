@@ -35,13 +35,12 @@ data/
 outputs/*.txt
 
 # Archivos de datos procesados y modelos
-*.pt
-*.pth
+
 *.pkl
 *.pickle
 *.h5
 *.hdf5
-models/
+
 
 # Logs y resultados
 logs/

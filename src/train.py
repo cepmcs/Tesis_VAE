@@ -98,6 +98,7 @@ def train():
 
     # Checkpoint: reanudar si existe
     start_epoch = 0
+    elapsed_time = 0.0  # Tiempo acumulado de corridas anteriores (segundos)
     os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
     if os.path.exists(CHECKPOINT_PATH):
         print(f"Reanudando desde checkpoint: {CHECKPOINT_PATH}", flush=True)
@@ -106,7 +107,8 @@ def train():
         optimizer.load_state_dict(ckpt['optimizer_state'])
         start_epoch = ckpt['epoch'] + 1
         history = ckpt['history']
-        print(f"Reanudando desde epoch {start_epoch + 1}/{EPOCHS}", flush=True)
+        elapsed_time = ckpt.get('elapsed_time', 0.0)
+        print(f"Reanudando desde epoch {start_epoch + 1}/{EPOCHS} (tiempo previo: {elapsed_time/60:.1f} min)", flush=True)
 
     # 3. Bucle de Entrenamiento
     model.train()
@@ -220,6 +222,7 @@ def train():
             'optimizer_state': optimizer.state_dict(),
             'epoch': epoch,
             'history': history,
+            'elapsed_time': elapsed_time + (time.time() - start_time),
         }, CHECKPOINT_PATH)
 
     # 4. Guardar modelo entrenado (Última época)
@@ -255,7 +258,7 @@ def train():
     final_val_acc = history['val_accuracy'][-1]
     
     end_time = time.time()
-    training_time_minutes = (end_time - start_time) / 60.0
+    training_time_minutes = (elapsed_time + (end_time - start_time)) / 60.0
     
     with open(RESULTS_CSV, mode='a', newline='') as f:
         writer = csv.writer(f)

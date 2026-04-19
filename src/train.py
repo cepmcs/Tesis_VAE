@@ -40,6 +40,7 @@ KL_ANNEAL_EPOCHS = int(EPOCHS * 0.25)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATA_PATH = os.path.join(ROOT_DIR, args.data_path)
 MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", f"{args.exp_name}.pth")
+CHECKPOINT_PATH = os.path.join(ROOT_DIR, "models", "checkpoints", f"{args.exp_name}_checkpoint.pth")
 
 # --- Función de Entrenamiento ---
 def train():
@@ -95,10 +96,22 @@ def train():
         'val_loss': [], 'val_accuracy': [],
     }
 
+    # Checkpoint: reanudar si existe
+    start_epoch = 0
+    os.makedirs(os.path.dirname(CHECKPOINT_PATH), exist_ok=True)
+    if os.path.exists(CHECKPOINT_PATH):
+        print(f"Reanudando desde checkpoint: {CHECKPOINT_PATH}", flush=True)
+        ckpt = torch.load(CHECKPOINT_PATH, map_location=DEVICE)
+        model.load_state_dict(ckpt['model_state'])
+        optimizer.load_state_dict(ckpt['optimizer_state'])
+        start_epoch = ckpt['epoch'] + 1
+        history = ckpt['history']
+        print(f"Reanudando desde epoch {start_epoch + 1}/{EPOCHS}", flush=True)
+
     # 3. Bucle de Entrenamiento
     model.train()
 
-    for epoch in range(EPOCHS):
+    for epoch in range(start_epoch, EPOCHS):
         # KL Annealing 
         if epoch < KL_ANNEAL_EPOCHS:
             kl_weight = KL_START + (KL_END - KL_START) * (epoch / KL_ANNEAL_EPOCHS)
@@ -201,6 +214,14 @@ def train():
         print(f"Epoch {epoch+1}/{EPOCHS} | Train - Loss: {train_avg_loss:.4f} | Acc: {train_avg_acc:.2f}%", flush=True)
         print(f"Epoch {epoch+1}/{EPOCHS} | Val   - Loss: {val_avg_loss:.4f} | Acc: {val_avg_acc:.2f}%", flush=True)
 
+        # Guardar checkpoint (se sobreescribe cada epoch)
+        torch.save({
+            'model_state': model.state_dict(),
+            'optimizer_state': optimizer.state_dict(),
+            'epoch': epoch,
+            'history': history,
+        }, CHECKPOINT_PATH)
+
     # 4. Guardar modelo entrenado (Última época)
     print("Guardando modelo...", flush=True)
     torch.save({
@@ -217,7 +238,12 @@ def train():
         'history': history,
         'epoch': EPOCHS
     }, MODEL_SAVE_PATH)
-    print(f"Modelo guardado en {MODEL_SAVE_PATH}")
+    print(f"Modelo guardado en {MODEL_SAVE_PATH}", flush=True)
+
+    # Eliminar checkpoint tras guardar modelo final
+    if os.path.exists(CHECKPOINT_PATH):
+        os.remove(CHECKPOINT_PATH)
+        print(f"Checkpoint eliminado: {CHECKPOINT_PATH}", flush=True)
 
     # 5. Guardar resultados en CSV global (Reemplaza a la gráfica)
     RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase1_resultados.csv")

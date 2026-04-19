@@ -20,6 +20,17 @@ EPOCHS_LIST=(100)
 LATENT_DIMS=(64 128 256)
 NUM_LAYERS=(1 2)
 
+# Variable para rastrear el lock activo y limpiarlo si el script muere
+CURRENT_LOCK=""
+cleanup() {
+    if [ -n "$CURRENT_LOCK" ] && [ -f "$CURRENT_LOCK" ]; then
+        echo "Señal recibida. Eliminando lock: $CURRENT_LOCK"
+        rm -f "$CURRENT_LOCK"
+    fi
+    exit 1
+}
+trap cleanup SIGTERM SIGINT SIGHUP EXIT
+
 # Un bucle iterando sobre el índice (0 o 1) para ambos arrays a la vez
 for idx in "${!DATA_BATERIA[@]}"; do
     DATA="${DATA_BATERIA[$idx]}"
@@ -32,13 +43,20 @@ for idx in "${!DATA_BATERIA[@]}"; do
                 # Nombre formato: SMILES_LSTM_1_64_100
                 EXP_NAME="${REP_NAME}_LSTM_${LAYERS}_${LATENT}_${EPOCH}"
                 MODEL_FILE="Tesis_VAE/models/${EXP_NAME}.pth"
+                LOCK_FILE="Tesis_VAE/models/${EXP_NAME}.lock"
                 
                 echo "======================================================"
-                # Control de reinicio: Si existe, se salta
+                # Control de reinicio: Si existe modelo o lock, se salta
                 if [ -f "$MODEL_FILE" ]; then
                     echo "El modelo $EXP_NAME ya existe. Saltando al siguiente..."
+                elif [ -f "$LOCK_FILE" ]; then
+                    echo "El modelo $EXP_NAME está siendo entrenado por otro proceso. Saltando..."
                 else
                     echo "CORRIENDO EXPERIMENTO: $EXP_NAME"
+                    
+                    # Crear lock file para evitar duplicados en paralelo
+                    touch "$LOCK_FILE"
+                    CURRENT_LOCK="$LOCK_FILE"
                     
                     # Ejecutando entrenamiento
                     python Tesis_VAE/src/train_lstm.py \
@@ -47,6 +65,10 @@ for idx in "${!DATA_BATERIA[@]}"; do
                         --data_path $DATA \
                         --exp_name $EXP_NAME \
                         --num_layers $LAYERS
+                    
+                    # Eliminar lock al terminar
+                    rm -f "$LOCK_FILE"
+                    CURRENT_LOCK=""
                 fi
                 
             done
@@ -54,4 +76,5 @@ for idx in "${!DATA_BATERIA[@]}"; do
     done
 done
 
+trap - EXIT
 echo "¡BATERÍA LSTM COMPLETADA!"

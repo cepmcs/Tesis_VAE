@@ -2,7 +2,7 @@ import os
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset, random_split
+from torch.utils.data import DataLoader, TensorDataset
 from torch.nn.utils import clip_grad_norm_
 from tqdm import tqdm
 from vae_model_lstm import MolecularVAE_LSTM, vae_loss_function
@@ -61,24 +61,28 @@ def train():
 
     # Cargar datos preprocesados
     saved_data = torch.load(DATA_PATH)
-    data_tensor = saved_data["data"]
     vocab_stoi = saved_data["vocab_stoi"]
     vocab_size = len(vocab_stoi)
-    
+
+    # Usar splits oficiales de MOSES directamente
+    if "train_data" in saved_data:
+        train_tensor = saved_data["train_data"]
+        test_tensor = saved_data["test_data"]
+    else:
+        print("ERROR: Formato de datos antiguo. Re-ejecutar scripts/data_prep.py", flush=True)
+        return
 
     print(f"Vocabulario: {vocab_size} tokens", flush=True)
-    print(f"Muestras totales: {len(data_tensor)}", flush=True)
+    print(f"Train (MOSES train): {len(train_tensor)} | Val (MOSES test): {len(test_tensor)}", flush=True)
 
-    # Split 80% train / 20% validation
-    dataset = TensorDataset(data_tensor)
-    train_size = int(0.8 * len(dataset))
-    val_size = len(dataset) - train_size
-    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+    # DataLoaders directos con los splits oficiales de MOSES
+    train_dataset = TensorDataset(train_tensor)
+    val_dataset = TensorDataset(test_tensor)
     
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
     
-    print(f"Train: {train_size} | Validación: {val_size}", flush=True)
+    print(f"Train: {len(train_tensor)} | Validación: {len(test_tensor)}", flush=True)
 
     # 2. Inicializar Modelo 
     model = MolecularVAE_LSTM(

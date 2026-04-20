@@ -40,6 +40,9 @@ def load_model(model_path: str, device: torch.device):
 
 def load_data(data_path: str):
     saved = torch.load(data_path, map_location="cpu")
+    # Compatibilidad: formato nuevo ("train_data") y viejo ("data")
+    if "train_data" in saved:
+        return saved["train_data"]
     return saved["data"]
 
 

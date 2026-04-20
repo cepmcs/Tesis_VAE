@@ -1,5 +1,4 @@
 import os
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
@@ -79,8 +78,8 @@ def train():
     train_dataset = TensorDataset(train_tensor)
     val_dataset = TensorDataset(test_tensor)
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True,num_workers=4, pin_memory=True, persistent_workers=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False,num_workers=2, pin_memory=True, persistent_workers=True)
     
     print(f"Train: {len(train_tensor)} | Validación: {len(test_tensor)}", flush=True)
 

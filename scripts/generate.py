@@ -17,7 +17,7 @@ from vae_model import MolecularVAE
 RDLogger.DisableLog('rdApp.*')
 
 # --- CONFIGURACIÓN ---
-MODEL_PATH = os.path.join(ROOT_DIR, "models", "SMILES_GRU_2_256_100.pth")  # Cambia al modelo que quieras usar
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "SMILES_GRU_2_128_100.pth")  # Cambia al modelo que quieras usar
 NUM_MOLECULES = 30000   # MOSES recomienda al menos 30k
 MAX_LEN = 100          
 TEMP = 1.0             # Temperatura para muestreo

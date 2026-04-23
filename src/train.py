@@ -78,8 +78,8 @@ def train():
     train_dataset = TensorDataset(train_tensor)
     val_dataset = TensorDataset(test_tensor)
     
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True,num_workers=4, pin_memory=True, persistent_workers=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False,num_workers=2, pin_memory=True, persistent_workers=True)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True,num_workers=8, pin_memory=True, persistent_workers=True)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last=False,num_workers=4, pin_memory=True, persistent_workers=True)
     
     print(f"Train: {len(train_tensor)} | Validación: {len(test_tensor)}", flush=True)
 

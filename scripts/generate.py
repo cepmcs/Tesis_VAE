@@ -60,6 +60,20 @@ def load_model(model_path):
     return model, vocab_stoi, vocab_itos, hyper['latent'], is_lstm
 
 
+def _safe_sample(logits, temp=1.0):
+    """Samplea desde logits sanitizando NaN/Inf antes del softmax."""
+    # Reemplaza NaN/Inf con -inf para que el softmax les asigne prob ≈ 0
+    logits = logits / temp
+    logits = torch.nan_to_num(logits, nan=-1e9, posinf=1e9, neginf=-1e9)
+    logits = torch.clamp(logits, min=-1e9, max=1e9)
+    probs = F.softmax(logits, dim=-1)
+    # Ultimo recurso: si aún hay NaN, distribución uniforme
+    bad = probs.isnan().any(dim=-1) | (probs < 0).any(dim=-1)
+    if bad.any():
+        probs[bad] = torch.ones(probs.size(-1), device=probs.device) / probs.size(-1)
+    return torch.multinomial(probs, 1)
+
+
 def decode_gru(model, z, sos_idx, eos_idx):
     """Decodifica un batch de latentes z usando GRU."""
     batch_size = z.size(0)
@@ -74,8 +88,7 @@ def decode_gru(model, z, sos_idx, eos_idx):
             embed = model.embedding(current_token)
             out, h = model.decoder_rnn(embed, h)
             logits = model.fc_out(out.squeeze(1))
-            probs = F.softmax(logits / TEMP, dim=-1)
-            next_token = torch.multinomial(probs, 1)
+            next_token = _safe_sample(logits, TEMP)
             next_token = torch.where(finished.unsqueeze(1), torch.zeros_like(next_token), next_token)
             decoded.append(next_token)
             current_token = next_token
@@ -101,8 +114,7 @@ def decode_lstm(model, z, sos_idx, eos_idx):
             embed = model.embedding(current_token)
             out, (h, c) = model.decoder_rnn(embed, (h, c))
             logits = model.fc_out(out.squeeze(1))
-            probs = F.softmax(logits / TEMP, dim=-1)
-            next_token = torch.multinomial(probs, 1)
+            next_token = _safe_sample(logits, TEMP)
             next_token = torch.where(finished.unsqueeze(1), torch.zeros_like(next_token), next_token)
             decoded.append(next_token)
             current_token = next_token
@@ -159,8 +171,12 @@ def generate_for_model(model_path):
     for i in range(0, NUM_MOLECULES, BATCH_SIZE):
         batch = min(BATCH_SIZE, NUM_MOLECULES - i)
         z = torch.randn(batch, latent_dim).to(DEVICE)
-        indices = decode_fn(model, z, sos_idx, eos_idx)
-        all_strings.extend(indices_to_strings(indices, itos))
+        try:
+            indices = decode_fn(model, z, sos_idx, eos_idx)
+            all_strings.extend(indices_to_strings(indices, itos))
+        except RuntimeError as e:
+            print(f"    WARN batch {i//BATCH_SIZE}: {e} — saltando batch", flush=True)
+            all_strings.extend([""] * batch)
         
         if (i // BATCH_SIZE) % 20 == 0:
             print(f"    {len(all_strings)}/{NUM_MOLECULES}...", flush=True)

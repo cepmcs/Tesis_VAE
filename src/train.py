@@ -49,7 +49,7 @@ def train():
     if LATENT_DIM >= 256:
         max_clip = 1.0
     else:
-        max_clip = 2.0  # Bajado de 5.0 a 2.0 para mayor estabilidad en SELFIES
+        max_clip = 2.0  
     
     # 1. Cargar Datos
     if not os.path.exists(DATA_PATH):

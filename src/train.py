@@ -22,12 +22,14 @@ parser.add_argument('--epochs', type=int, required=True, help="Número de época
 parser.add_argument('--data_path', type=str, required=True, help="Ruta del dataset")
 parser.add_argument('--exp_name', type=str, required=True, help="Nombre único para guardar el modelo")
 parser.add_argument('--num_layers', type=int, default=1, help="Cantidad de capas GRU")
+parser.add_argument('--lr', type=float, default=1e-3, help="Tasa de aprendizaje (default: 1e-3)")
+parser.add_argument('--batch_size', type=int, default=128, help="Tamaño de batch (default: 128)")
 args = parser.parse_args()
 
 # --- Configuración global ---
-BATCH_SIZE = 128
+BATCH_SIZE = args.batch_size
 EPOCHS = args.epochs
-LEARNING_RATE = 1e-3
+LEARNING_RATE = args.lr
 LATENT_DIM = args.latent_dim      
 HIDDEN_DIM = LATENT_DIM
 EMBED_DIM = 128       
@@ -251,8 +253,8 @@ def train():
         os.remove(CHECKPOINT_PATH)
         print(f"Checkpoint eliminado: {CHECKPOINT_PATH}", flush=True)
 
-    # 5. Guardar resultados en CSV global (Reemplaza a la gráfica)
-    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase1_resultados.csv")
+    # 5. Guardar resultados en CSV global
+    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase2_resultados_gru.csv")
     file_exists = os.path.isfile(RESULTS_CSV)
     
     final_train_loss = history['train_loss'][-1]
@@ -266,15 +268,17 @@ def train():
     with open(RESULTS_CSV, mode='a', newline='') as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'Final_Train_Loss', 'Final_Val_Loss', 'Final_Train_Acc', 'Final_Val_Acc', 'Time(min)'])
+            writer.writerow(['Experimento', 'Dataset', 'RNN_Type', 'Layers', 'Latent_Dim', 'Epochs', 'LR', 'Batch_Size', 'Final_Train_Loss', 'Final_Val_Loss', 'Final_Train_Acc', 'Final_Val_Acc', 'Time(min)'])
         
         writer.writerow([
             args.exp_name,
             args.data_path,
-            'GRU', # Fijo para estos experimentos
+            'GRU',
             args.num_layers,
-            LATENT_DIM, 
+            LATENT_DIM,
             EPOCHS,
+            LEARNING_RATE,
+            BATCH_SIZE,
             final_train_loss, 
             final_val_loss,
             round(final_train_acc, 2),

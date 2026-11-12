@@ -59,3 +59,8 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Resultados definitivos: sí versionar los CSV
+!resultados/**/*.csv
+resultados/modelo_final/generados/
+resultados/fase2/generados/

@@ -1,12 +1,9 @@
 """
-Evaluación de moléculas generadas usando MOSES.
+Evaluación con MOSES de las moléculas generadas de una fase.
 Ejecutar en el entorno moses_fork:
-    conda run -n moses_fork python eval_moses.py
-
-Itera sobre todos los *_generated.txt en outputs/
-- Guarda un JSON individual por modelo en outputs/eval_moses/
-- Genera un resumen .txt con las métricas clave
+    conda run -n moses_fork python scripts/eval_moses.py --fase fase2
 """
+import argparse
 import json
 import os
 import glob
@@ -17,8 +14,14 @@ from scipy.spatial.distance import cosine
 
 # Directorio raíz del proyecto (un nivel arriba de scripts/)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUTPUTS_DIR = os.path.join(ROOT_DIR, "outputs")
-EVAL_DIR = os.path.join(OUTPUTS_DIR, "eval_moses")
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--fase', type=str, required=True, help="fase1_100ep, fase1_300ep o fase2")
+args = parser.parse_args()
+
+RESULTS_DIR = os.path.join(ROOT_DIR, "resultados", args.fase)
+GENERATED_DIR = os.path.join(RESULTS_DIR, "generados")
+EVAL_DIR = os.path.join(RESULTS_DIR, "eval_moses")
 
 # Parche temporal para corregir el overflow de float32 en moses/scipy
 def safe_cos_distance(u, v):
@@ -68,10 +71,10 @@ def main():
     os.makedirs(EVAL_DIR, exist_ok=True)
 
     # Buscar todos los _generated.txt
-    gen_files = sorted(glob.glob(os.path.join(OUTPUTS_DIR, "*_generated.txt")))
+    gen_files = sorted(glob.glob(os.path.join(GENERATED_DIR, "*_generated.txt")))
 
     if not gen_files:
-        print(f"No se encontraron archivos *_generated.txt en {OUTPUTS_DIR}")
+        print(f"No se encontraron archivos *_generated.txt en {GENERATED_DIR}")
         return
 
     print(f"=== Evaluación MOSES ===", flush=True)
@@ -116,7 +119,7 @@ def main():
         print("", flush=True)
 
     # Generar resumen .txt
-    summary_path = os.path.join(OUTPUTS_DIR, "eval_moses_resumen.txt")
+    summary_path = os.path.join(RESULTS_DIR, "eval_moses_resumen.txt")
     
     # Header
     header_cols = ["Experimento"] + [label for _, label in summary_keys]

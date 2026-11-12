@@ -24,6 +24,7 @@ parser.add_argument('--exp_name', type=str, required=True, help="Nombre único p
 parser.add_argument('--num_layers', type=int, default=1, help="Cantidad de capas LSTM")
 parser.add_argument('--lr', type=float, default=1e-3, help="Tasa de aprendizaje (default: 1e-3)")
 parser.add_argument('--batch_size', type=int, default=128, help="Tamaño de batch (default: 128)")
+parser.add_argument('--fase', type=str, required=True, help="fase1_100ep, fase1_300ep o fase2")
 args = parser.parse_args()
 
 # --- Configuración global ---
@@ -40,8 +41,10 @@ KL_ANNEAL_EPOCHS = int(EPOCHS * 0.25)
 # Paths dinámicos
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATA_PATH = os.path.join(ROOT_DIR, args.data_path)
-MODEL_SAVE_PATH = os.path.join(ROOT_DIR, "models", f"{args.exp_name}.pth")
-CHECKPOINT_PATH = os.path.join(ROOT_DIR, "models", "checkpoints", f"{args.exp_name}_checkpoint.pth")
+MODELS_DIR = os.path.join(ROOT_DIR, "modelos_entrenados", args.fase)
+RESULTS_DIR = os.path.join(ROOT_DIR, "resultados", args.fase)
+MODEL_SAVE_PATH = os.path.join(MODELS_DIR, f"{args.exp_name}.pth")
+CHECKPOINT_PATH = os.path.join(MODELS_DIR, "checkpoints", f"{args.exp_name}_checkpoint.pth")
 
 # --- Función de Entrenamiento ---
 def train():
@@ -57,8 +60,8 @@ def train():
     if not os.path.exists(DATA_PATH):
         print(f"No se encuentra {DATA_PATH}")
 
-    os.makedirs(os.path.join(ROOT_DIR, "models"), exist_ok=True)
-    os.makedirs(os.path.join(ROOT_DIR, "outputs"), exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(RESULTS_DIR, exist_ok=True)
 
     # Cargar datos preprocesados
     saved_data = torch.load(DATA_PATH)
@@ -254,7 +257,7 @@ def train():
         print(f"Checkpoint eliminado: {CHECKPOINT_PATH}", flush=True)
 
     # 5. Guardar resultados en CSV global
-    RESULTS_CSV = os.path.join(ROOT_DIR, "outputs", "fase2_resultados_lstm.csv")
+    RESULTS_CSV = os.path.join(RESULTS_DIR, f"{args.fase}_resultados_lstm.csv")
     file_exists = os.path.isfile(RESULTS_CSV)
     
     final_train_loss = history['train_loss'][-1]

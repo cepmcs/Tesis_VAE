@@ -1,9 +1,8 @@
 """
-Genera 50,000 moléculas por cada modelo .pth en models/.
-Detecta si es GRU o LSTM del nombre y usa la arquitectura correcta.
-Los modelos SELFIES se convierten a SMILES antes de guardar.
-Salida: outputs/{nombre_modelo}_generated.txt (1 SMILES por línea)
+Generación de moléculas con los modelos de una fase.
+    python scripts/generate.py --fase fase2
 """
+import argparse
 import torch
 import torch.nn.functional as F
 import os
@@ -17,9 +16,13 @@ sys.path.insert(0, os.path.join(ROOT_DIR, "src"))
 from vae_model import MolecularVAE
 from vae_model_lstm import MolecularVAE_LSTM
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--fase', type=str, required=True, help="fase1_100ep, fase1_300ep o fase2")
+args = parser.parse_args()
+
 # --- CONFIGURACIÓN ---
-MODELS_DIR = os.path.join(ROOT_DIR, "models")
-OUTPUTS_DIR = os.path.join(ROOT_DIR, "outputs")
+MODELS_DIR = os.path.join(ROOT_DIR, "modelos_entrenados", args.fase)
+OUTPUTS_DIR = os.path.join(ROOT_DIR, "resultados", args.fase, "generados")
 NUM_MOLECULES = 50000
 MAX_LEN = 100
 TEMP = 1.0

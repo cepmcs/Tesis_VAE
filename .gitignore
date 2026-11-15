@@ -64,3 +64,4 @@ temp/
 !resultados/**/*.csv
 resultados/modelo_final/generados/
 resultados/fase2/generados/
+resultados/fase1_300ep/generados/
